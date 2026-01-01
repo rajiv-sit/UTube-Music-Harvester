@@ -2,7 +2,8 @@
 
 UTube is a Python-first YouTube harvester that exposes both a CLI and a modern Qt GUI. You can search by genre or artist, sprinkle in filters, preview streams, and download the resulting audio assets through yt-dlp + ffmpeg. Everything respects user-overridable defaults (download location, formats, JS runtime, remote components, etc.) so CLI and GUI behave consistently.
 
-![UTube GUI overview](assets/utube-gui.png)
+<img width="1914" height="1031" alt="image" src="https://github.com/user-attachments/assets/64a9d0fc-239d-43a2-bca4-3885a26732d9" />
+UTube GUI overview
 
 ## Quick setup
 
