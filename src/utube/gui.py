@@ -11,7 +11,7 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from math import sin
+from math import cos, pi, sin
 
 from PyQt6.QtCore import (
     QModelIndex,
@@ -31,6 +31,8 @@ from PyQt6.QtGui import (
     QPainter,
     QPixmap,
     QColor,
+    QPen,
+    QPainterPath,
 )
 from PyQt6.QtMultimedia import QAudioOutput, QMediaPlayer, QSoundEffect
 from PyQt6.QtMultimediaWidgets import QVideoWidget
@@ -51,10 +53,12 @@ from PyQt6.QtWidgets import (
     QSlider,
     QSpinBox,
     QStackedWidget,
+    QTabWidget,
     QTableView,
     QVBoxLayout,
     QWidget,
     QFileDialog,
+    QSizePolicy,
 )
 
 from .config import load_defaults
@@ -292,7 +296,7 @@ class LibraryView(QWidget):
         controls = QHBoxLayout()
         controls.setSpacing(8)
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText('Filter title, artist, tagsâ€¦')
+        self.search_input.setPlaceholderText('Filter title, artist, tags...')
         self.search_input.textChanged.connect(self.proxy.set_search_filter)
         controls.addWidget(self.search_input)
         self.type_combo = QComboBox()
@@ -348,7 +352,10 @@ class WaveformView(QWidget):
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self._progress = 0.0
-        self._peaks = [abs(sin(i / 3.5)) * 0.8 + 0.1 for i in range(120)]
+        self._peaks = [abs(sin(i / 3.5)) * 0.8 + 0.1 for i in range(160)]
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.setMinimumHeight(28)
+        self.setMaximumHeight(42)
 
     def set_progress(self, fraction: float) -> None:
         self._progress = max(0.0, min(1.0, fraction))
@@ -356,23 +363,89 @@ class WaveformView(QWidget):
 
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.fillRect(self.rect(), QColor(SECONDARY_PANEL))
-        width = self.width()
+        width = max(1, self.width())
         height = self.height()
         if not self._peaks:
             painter.end()
             return
-        bar_width = width / len(self._peaks)
+
+        spacing = 1.0
+        total_spacing = spacing * (len(self._peaks) - 1)
+        available_width = max(width - total_spacing, len(self._peaks))
+        bar_width = available_width / len(self._peaks)
+        mid_y = height / 2
+        max_bar = max(1.0, mid_y - 2)
+
         for idx, peak in enumerate(self._peaks):
-            x = idx * bar_width
-            bar_height = peak * height
-            rect = QRectF(x, height - bar_height, bar_width * 0.8, bar_height)
-            painter.setBrush(QColor(ACCENT_COLOR if idx / len(self._peaks) < self._progress else DIVIDER))
+            x = idx * (bar_width + spacing)
+            normalized = min(1.0, abs(peak))
+            bar_height = normalized * max_bar
+            rect_top = QRectF(x, mid_y - bar_height, bar_width, bar_height)
+            rect_bottom = QRectF(x, mid_y, bar_width, bar_height)
+            highlight = idx / len(self._peaks) < self._progress
+            color = QColor(ACCENT_COLOR if highlight else DIVIDER)
+            painter.setBrush(color)
             painter.setPen(Qt.PenStyle.NoPen)
-            painter.drawRoundedRect(rect, 2, 2)
+            painter.drawRoundedRect(rect_top, 1.5, 1.5)
+            painter.drawRoundedRect(rect_bottom, 1.5, 1.5)
+
+        center_pen = QPen(QColor(DIVIDER))
+        center_pen.setWidth(1)
+        painter.setPen(center_pen)
+        painter.drawLine(0, int(mid_y), width, int(mid_y))
+
         cursor = int(width * self._progress)
-        painter.setPen(QColor(ACCENT_COLOR))
+        pointer_pen = QPen(QColor(ACCENT_COLOR))
+        pointer_pen.setWidth(2)
+        painter.setPen(pointer_pen)
         painter.drawLine(cursor, 0, cursor, height)
+        painter.end()
+
+
+class VisualizerWidget(QWidget):
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
+        super().__init__(parent)
+        self._phase = 0.0
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+    def refresh(self) -> None:
+        self._phase += 0.08
+        self.update()
+
+    def paintEvent(self, event) -> None:
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.fillRect(self.rect(), QColor(SECONDARY_PANEL))
+        width = self.width()
+        height = self.height()
+        if width <= 0 or height <= 0:
+            painter.end()
+            return
+
+        mid_y = height / 2
+        steps = max(32, width // 8)
+        layers = 5
+        for layer in range(layers):
+            path = QPainterPath()
+            hue = 200 + layer * 5
+            color = QColor(ACCENT_COLOR).lighter(110 + layer * 10)
+            pen = QPen(color)
+            pen.setWidthF(1.2)
+            painter.setPen(pen)
+            amplitude = height * 0.12 + layer * 6
+            for step in range(steps + 1):
+                angle = (step / steps) * pi * 2
+                offset = sin(angle * (1 + layer * 0.2) + self._phase) * amplitude
+                x = (step / steps) * width
+                y = mid_y + offset
+                if step == 0:
+                    path.moveTo(x, y)
+                else:
+                    path.lineTo(x, y)
+            painter.drawPath(path)
+
         painter.end()
 
 
@@ -478,61 +551,84 @@ class PlayerView(QWidget):
         super().__init__(parent)
         self.controller = controller
         self.sounds = sounds
+        self._duration_ms = 0
 
-        self.title_label = QLabel('Select a track to play')
-        self.title_label.setStyleSheet('font-weight: 600; font-size: 18px;')
-        self.artist_label = QLabel('')
-        self.info_label = QLabel('Waiting for playback')
+        self.title_label = QLabel("Select a track to play")
+        self.title_label.setStyleSheet("font-weight: 600; font-size: 18px;")
+        self.artist_label = QLabel("")
+        self.info_label = QLabel("Waiting for playback")
+        self.elapsed_label = QLabel("00:00")
+        self.duration_label = QLabel("00:00")
 
         meta_layout = QVBoxLayout()
         meta_layout.addWidget(self.title_label)
         meta_layout.addWidget(self.artist_label)
         meta_layout.addWidget(self.info_label)
 
-        video_frame = QFrame()
-        video_frame.setFrameShape(QFrame.Shape.StyledPanel)
-        video_layout = QVBoxLayout()
-        video_layout.setContentsMargins(0, 0, 0, 0)
-        video_layout.addWidget(self.controller.video_widget)
-        video_frame.setLayout(video_layout)
-
-        self.waveform = WaveformView()
-        self.equalizer = EqualizerPanel()
-
-        controls = QHBoxLayout()
-        self.play_button = QPushButton('Play')
+        self.play_button = QPushButton("Play")
         self.play_button.clicked.connect(self._toggle_play)
-        self.stop_button = QPushButton('Stop')
+        self.stop_button = QPushButton("Stop")
         self.stop_button.clicked.connect(self._stop)
         self.seek_slider = QSlider(Qt.Orientation.Horizontal)
         self.seek_slider.setRange(0, 0)
         self.seek_slider.sliderMoved.connect(self.controller.set_position)
+        self.seek_slider.sliderReleased.connect(
+            lambda: self.controller.set_position(self.seek_slider.value())
+        )
         self.volume_slider = QSlider(Qt.Orientation.Horizontal)
         self.volume_slider.setRange(0, 100)
         self.volume_slider.setValue(70)
         self.volume_slider.valueChanged.connect(self.controller.set_volume)
+
+        controls = QHBoxLayout()
         controls.addWidget(self.play_button)
         controls.addWidget(self.stop_button)
-        controls.addWidget(QLabel('Seek'))
-        controls.addWidget(self.seek_slider)
-        controls.addWidget(QLabel('Vol'))
+        controls.addStretch()
+        controls.addWidget(QLabel("Vol"))
         controls.addWidget(self.volume_slider)
 
-        center = QHBoxLayout()
-        center.addWidget(video_frame, 2)
-        center.addWidget(self.waveform, 3)
-        center.addWidget(self.equalizer, 2)
+        seek_layout = QHBoxLayout()
+        seek_layout.setContentsMargins(0, 4, 0, 0)
+        seek_layout.addWidget(self.elapsed_label)
+        seek_layout.addWidget(self.seek_slider)
+        seek_layout.addWidget(self.duration_label)
+
+        self.waveform = WaveformView()
+        self.visualizer = VisualizerWidget()
+        self.equalizer = EqualizerPanel()
+
+        self.video_stack = QStackedWidget()
+        self.video_stack.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.video_stack.setMinimumHeight(220)
+        self.video_stack.addWidget(self.controller.video_widget)
+        self.video_stack.addWidget(self.visualizer)
+        self.video_stack.setCurrentWidget(self.visualizer)
+
+        video_frame = QFrame()
+        video_frame.setFrameShape(QFrame.Shape.StyledPanel)
+        video_frame.setFrameShadow(QFrame.Shadow.Raised)
+        video_layout = QHBoxLayout()
+        video_layout.setContentsMargins(0, 0, 0, 0)
+        video_layout.addWidget(self.video_stack, 3)
+        video_layout.addWidget(self.equalizer, 1)
+        video_frame.setLayout(video_layout)
 
         layout = QVBoxLayout()
         layout.addLayout(meta_layout)
-        layout.addLayout(center)
         layout.addLayout(controls)
+        layout.addLayout(seek_layout)
+        layout.addWidget(self.waveform)
+        layout.addWidget(video_frame)
         self.setLayout(layout)
 
         self.controller.trackChanged.connect(self._on_track_changed)
         self.controller.positionChanged.connect(self._on_position_changed)
         self.controller.durationChanged.connect(self._on_duration_changed)
         self.controller.stateChanged.connect(self._on_state_changed)
+
+    def set_video_mode(self, enabled: bool) -> None:
+        target = self.controller.video_widget if enabled else self.visualizer
+        self.video_stack.setCurrentWidget(target)
 
     def _toggle_play(self) -> None:
         self.sounds.play_click()
@@ -545,30 +641,47 @@ class PlayerView(QWidget):
     def _on_track_changed(self, track: TrackMetadata) -> None:
         self.title_label.setText(track.title)
         self.artist_label.setText(track.uploader)
-        self.info_label.setText('Resolving streamâ€¦')
+        self.info_label.setText("Resolving stream...")
         self.waveform.set_progress(0.0)
+        self.elapsed_label.setText("00:00")
+        self.duration_label.setText("00:00")
+        self.set_video_mode(self.controller.is_video())
+        self.seek_slider.setEnabled(False)
 
     def _on_position_changed(self, position: int) -> None:
-        duration = self.controller.player.duration()
-        if duration > 0:
-            self.waveform.set_progress(min(position / duration, 1.0))
+        if self._duration_ms > 0:
+            self.waveform.set_progress(min(position / max(1, self._duration_ms), 1.0))
         self.seek_slider.blockSignals(True)
         self.seek_slider.setValue(position)
         self.seek_slider.blockSignals(False)
+        self.elapsed_label.setText(self._format_time(position))
+        self.duration_label.setText(self._format_time(self._duration_ms))
+        self.visualizer.refresh()
 
     def _on_duration_changed(self, duration: int) -> None:
+        self._duration_ms = duration
+        self._duration_ms = duration
         self.seek_slider.setRange(0, duration)
+        self.seek_slider.setEnabled(duration > 0)
+        self.duration_label.setText(self._format_time(duration))
 
     def _on_state_changed(self, state: QMediaPlayer.PlaybackState) -> None:
         if state == QMediaPlayer.PlaybackState.PlayingState:
-            self.play_button.setText('Pause')
-            self.info_label.setText('Playing')
+            self.play_button.setText("Pause")
+            self.info_label.setText("Playing")
         elif state == QMediaPlayer.PlaybackState.PausedState:
-            self.play_button.setText('Play')
-            self.info_label.setText('Paused')
+            self.play_button.setText("Play")
+            self.info_label.setText("Paused")
         else:
-            self.play_button.setText('Play')
-            self.info_label.setText('Stopped')
+            self.play_button.setText("Play")
+            self.info_label.setText("Stopped")
+
+    def _format_time(self, milliseconds: int) -> str:
+        seconds = max(0, int(milliseconds // 1000))
+        minutes = seconds // 60
+        seconds = seconds % 60
+        return f"{minutes:02d}:{seconds:02d}"
+
 
 
 SEARCH_CHUNK_SIZE = 20
@@ -661,8 +774,9 @@ class UTubeGui(QMainWindow):
         top_grid.addWidget(self.stream_format_input, 1, 3)
         top_grid.addWidget(QLabel("Video quality"), 2, 0)
         self.video_quality_combo = QComboBox()
-        self.video_quality_combo.addItems(["high", "medium", "low"])
-        self.video_quality_combo.setCurrentText(self.defaults.video_quality)
+        self.video_quality_combo.addItems(["Any", "high", "medium", "low"])
+        default_quality = self.defaults.video_quality if self.defaults.video_quality in ["high", "medium", "low"] else "Any"
+        self.video_quality_combo.setCurrentText(default_quality)
         top_grid.addWidget(self.video_quality_combo, 2, 1)
         top_grid.addWidget(QLabel("JS runtime"), 2, 2)
         self.js_runtime_input = QLineEdit(self.defaults.js_runtime or "")
@@ -680,39 +794,50 @@ class UTubeGui(QMainWindow):
         filter_grid = QGridLayout()
         filter_grid.setHorizontalSpacing(12)
         filter_grid.setVerticalSpacing(8)
-        filter_grid.addWidget(QLabel("Max entries"), 0, 0)
-        self.max_entries_spin = QSpinBox()
-        self.max_entries_spin.setRange(1, 500)
-        self.max_entries_spin.setValue(50)
-        filter_grid.addWidget(self.max_entries_spin, 0, 1)
-        filter_grid.addWidget(QLabel("Min duration"), 1, 0)
+        filter_grid.addWidget(QLabel("Max entries"), 0, 0, 1, 1)
+        self.max_entries_slider = QSlider(Qt.Orientation.Horizontal)
+        self.max_entries_slider.setRange(1, 5000)
+        self.max_entries_slider.setValue(50)
+        self.max_entries_slider.setTickInterval(100)
+        self.max_entries_slider.setToolTip(str(self.max_entries_slider.value()))
+        filter_grid.addWidget(self.max_entries_slider, 0, 1, 1, 3)
+        self.max_entries_slider.valueChanged.connect(self._on_max_entries_slider_changed)
+        filter_grid.addWidget(QLabel("Format filter"), 1, 2, 1, 2)
+        self.format_tab = QTabWidget()
+        for label in ("Any", "MP3", "MP4"):
+            page = QWidget()
+            self.format_tab.addTab(page, label)
+        filter_grid.addWidget(self.format_tab, 2, 0, 1, 4)
+
+        # slider drives the max entries value which is read directly in _start_search
+        filter_grid.addWidget(QLabel("Min duration"), 3, 0)
         self.min_duration_spin = QSpinBox()
         self.min_duration_spin.setSuffix(" sec")
         self.min_duration_spin.setRange(0, 3600)
         self.min_duration_spin.setSpecialValueText("Any")
-        filter_grid.addWidget(self.min_duration_spin, 1, 1)
-        filter_grid.addWidget(QLabel("Max duration"), 1, 2)
+        filter_grid.addWidget(self.min_duration_spin, 3, 1)
+        filter_grid.addWidget(QLabel("Max duration"), 3, 2)
         self.max_duration_spin = QSpinBox()
         self.max_duration_spin.setSuffix(" sec")
         self.max_duration_spin.setRange(0, 3600)
         self.max_duration_spin.setSpecialValueText("Any")
-        filter_grid.addWidget(self.max_duration_spin, 1, 3)
-        filter_grid.addWidget(QLabel("Min views"), 2, 0)
+        filter_grid.addWidget(self.max_duration_spin, 3, 3)
+        filter_grid.addWidget(QLabel("Min views"), 4, 0)
         self.min_views_spin = QSpinBox()
         self.min_views_spin.setRange(0, 10_000_000)
         self.min_views_spin.setSpecialValueText("Any")
-        filter_grid.addWidget(self.min_views_spin, 2, 1)
-        filter_grid.addWidget(QLabel("Max views"), 2, 2)
+        filter_grid.addWidget(self.min_views_spin, 4, 1)
+        filter_grid.addWidget(QLabel("Max views"), 4, 2)
         self.max_views_spin = QSpinBox()
         self.max_views_spin.setRange(0, 10_000_000)
         self.max_views_spin.setSpecialValueText("Any")
-        filter_grid.addWidget(self.max_views_spin, 2, 3)
-        filter_grid.addWidget(QLabel("Keywords"), 3, 0)
+        filter_grid.addWidget(self.max_views_spin, 4, 3)
+        filter_grid.addWidget(QLabel("Keywords"), 5, 0)
         self.keywords_input = QLineEdit()
         self.keywords_input.setPlaceholderText("optional terms")
-        filter_grid.addWidget(self.keywords_input, 3, 1, 1, 3)
+        filter_grid.addWidget(self.keywords_input, 5, 1, 1, 3)
         self.sfw_checkbox = QCheckBox("Safe-for-work")
-        filter_grid.addWidget(self.sfw_checkbox, 4, 0)
+        filter_grid.addWidget(self.sfw_checkbox, 6, 0)
         layout.addLayout(filter_grid)
 
         self.search_button = QPushButton("Search")
@@ -786,6 +911,7 @@ class UTubeGui(QMainWindow):
             self.stream_format_input.text().strip(),
             prefer_video,
             self._current_video_quality(),
+            self._preferred_format(),
         )
         worker.signals.finished.connect(lambda url, t=track: self._route_media_playback(t, url))
         worker.signals.error.connect(self._on_worker_error)
@@ -794,7 +920,7 @@ class UTubeGui(QMainWindow):
 
     def _route_media_playback(self, track: TrackMetadata, stream_url: str) -> None:
         self._cleanup_temp_files()
-        self.player_controller.play_track(track, stream_url, self.library_view.is_video(track))
+        self.player_controller.play_track(track, stream_url, self._should_prefer_video(track))
         self._update_now_playing_label(track)
         self._play_attempts.pop(track.video_id, None)
         self._last_streams[track.video_id] = stream_url
@@ -806,12 +932,14 @@ class UTubeGui(QMainWindow):
         self._set_status(f"Playback error: {message}")
         attempts = self._play_attempts.get(track.video_id, 0) + 1
         self._play_attempts[track.video_id] = attempts
-        if attempts <= 1:
+        if attempts == 1:
             self._set_status("Retrying stream after transient error...")
             self._retry_stream(track)
-        else:
+        elif attempts == 2:
             self._set_status("Caching stream locally because live playback keeps failing.")
             self._start_local_fallback(track)
+        else:
+            self._set_status("Playback failed multiple times; track has been paused.")
 
     def _on_media_status_changed(self, status: QMediaPlayer.MediaStatus) -> None:
         if status != QMediaPlayer.MediaStatus.EndOfMedia or not self._loop_enabled:
@@ -826,26 +954,28 @@ class UTubeGui(QMainWindow):
         self.player_controller.play_track(track, last_stream, self.library_view.is_video(track))
 
     def _retry_stream(self, track: TrackMetadata) -> None:
-        prefer_video = self.library_view.is_video(track)
+        prefer_video = self._should_prefer_video(track)
         worker = Worker(
             self._resolve_stream_url,
             track,
             self.stream_format_input.text().strip(),
             prefer_video,
             self._current_video_quality(),
+            self._preferred_format(),
         )
         worker.signals.finished.connect(lambda url, t=track: self._route_media_playback(t, url))
         worker.signals.error.connect(self._on_worker_error)
         self.thread_pool.start(worker)
 
     def _start_local_fallback(self, track: TrackMetadata) -> None:
-        prefer_video = self.library_view.is_video(track)
+        prefer_video = self._should_prefer_video(track)
         worker = Worker(
             self._download_stream_to_temp,
             track,
             prefer_video,
             self._current_video_quality(),
             self.stream_format_input.text().strip(),
+            self._preferred_format(),
         )
         worker.signals.finished.connect(lambda path, t=track, pv=prefer_video: self._play_local_media(t, path, pv))
         worker.signals.error.connect(self._on_worker_error)
@@ -857,6 +987,7 @@ class UTubeGui(QMainWindow):
         prefer_video: bool,
         video_quality: str,
         stream_format: str,
+        preferred_format: Optional[str],
     ) -> str:
         selector = "bestvideo+bestaudio/best" if prefer_video else stream_format or self.defaults.stream_format
         links = Streamer(
@@ -865,6 +996,7 @@ class UTubeGui(QMainWindow):
             remote_components=self._current_remote_components(),
             prefer_video=prefer_video,
             video_quality=video_quality,
+            preferred_format=preferred_format,
         ).stream_links([track])
         if not links:
             raise RuntimeError("Unable to acquire fallback stream link.")
@@ -884,6 +1016,7 @@ class UTubeGui(QMainWindow):
         self._cleanup_temp_files(preserve=path)
         self._temp_media_files.add(path)
         self._last_streams[track.video_id] = path
+        self._play_attempts.pop(track.video_id, None)
         self.player_controller.play_track(track, path, prefer_video)
         self._update_now_playing_label(track)
         self.stack.setCurrentWidget(self.player_view)
@@ -900,7 +1033,7 @@ class UTubeGui(QMainWindow):
 
     def _resolve_stream_url(
         self, track: TrackMetadata, stream_format: str, prefer_video: bool, video_quality: str
-    ) -> str:
+    , preferred_format: Optional[str]) -> str:
         selector = "bestvideo+bestaudio/best" if prefer_video else stream_format or self.defaults.stream_format
         links = Streamer(
             format_selector=selector,
@@ -908,13 +1041,27 @@ class UTubeGui(QMainWindow):
             remote_components=self._current_remote_components(),
             prefer_video=prefer_video,
             video_quality=video_quality,
+            preferred_format=preferred_format,
         ).stream_links([track])
         if not links:
             raise RuntimeError("No stream URL available for the selected track.")
         return links[0].stream_url
 
+    def _preferred_format(self) -> Optional[str]:
+        page = self.format_tab.tabText(self.format_tab.currentIndex()).lower()
+        return None if page == "any" else page
+
+    def _should_prefer_video(self, track: TrackMetadata) -> bool:
+        preferred = self._preferred_format()
+        if preferred == "mp4":
+            return True
+        if preferred == "mp3":
+            return False
+        return self.library_view.is_video(track)
+
     def _current_video_quality(self) -> str:
-        return self.video_quality_combo.currentText().lower()
+        value = self.video_quality_combo.currentText().lower()
+        return "" if value == "any" else value
 
     def _current_js_runtime(self) -> Optional[str]:
         value = self.js_runtime_input.text().strip()
@@ -934,7 +1081,7 @@ class UTubeGui(QMainWindow):
             return
         self.library_view.clear()
         self.tracks = []
-        self.last_search_summary_label.setText("Streaming resultsâ€¦")
+        self.last_search_summary_label.setText("Streaming results...")
         self.search_button.setEnabled(False)
         self._set_status("Searching YouTube...")
         filters = self._build_filters()
@@ -948,7 +1095,7 @@ class UTubeGui(QMainWindow):
             remote_components=self._current_remote_components(),
             chunk_size=SEARCH_CHUNK_SIZE,
             progress=True,
-            max_results=self.max_entries_spin.value(),
+            max_results=self.max_entries_slider.value(),
         )
         worker.signals.progress.connect(self._on_track_discovered)
         worker.signals.finished.connect(self._on_search_finished)
@@ -956,6 +1103,9 @@ class UTubeGui(QMainWindow):
         worker.signals.error.connect(self._on_worker_error)
         self.thread_pool.start(worker)
         self.stack.setCurrentWidget(self.library_view)
+
+    def _on_max_entries_slider_changed(self, value: int) -> None:
+        self.max_entries_slider.setToolTip(str(value))
 
     def _on_track_discovered(self, track: TrackMetadata) -> None:
         self.tracks.append(track)
@@ -1029,7 +1179,7 @@ class UTubeGui(QMainWindow):
             self._set_status(f"Download folder set to {directory}")
 
     def _update_now_playing_label(self, track: TrackMetadata) -> None:
-        self.now_playing_label.setText(f"{track.title} â€” {track.uploader}")
+        self.now_playing_label.setText(f"{track.title} - {track.uploader}")
 
     def _on_player_state_updated(self, state: QMediaPlayer.PlaybackState) -> None:
         if state == QMediaPlayer.PlaybackState.PlayingState:

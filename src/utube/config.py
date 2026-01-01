@@ -10,7 +10,8 @@ from typing import List, Optional
 
 from dotenv import load_dotenv
 
-load_dotenv()
+if os.getenv("UTUBE_SKIP_DOTENV") != "1":
+    load_dotenv()
 
 
 def _env_path(env_var: str, fallback: Path) -> Path:
@@ -39,14 +40,16 @@ class CliDefaults:
     stream_format: str
     js_runtime: Optional[str]
     remote_components: List[str]
+    video_quality: str
 
 
 def load_defaults() -> CliDefaults:
     env_runtime = os.getenv("UTUBE_JS_RUNTIME")
     return CliDefaults(
         download_dir=_env_path("UTUBE_DOWNLOAD_DIR", Path.cwd() / "downloads"),
-        audio_format=os.getenv("UTUBE_AUDIO_FORMAT", "mp3"),
+        audio_format=os.getenv("UTUBE_MEDIA_FORMAT", os.getenv("UTUBE_AUDIO_FORMAT", "mp3")),
         stream_format=os.getenv("UTUBE_STREAM_FORMAT", "bestaudio/best"),
         js_runtime=env_runtime or _detect_js_runtime(),
         remote_components=_env_list("UTUBE_REMOTE_COMPONENTS"),
+        video_quality=os.getenv("UTUBE_VIDEO_QUALITY", "high"),
     )

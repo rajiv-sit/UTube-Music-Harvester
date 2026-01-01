@@ -6,7 +6,9 @@ import datetime
 import os
 import shutil
 from dataclasses import dataclass
-from typing import Iterable, List, Optional
+from pathlib import Path
+from typing import Callable, Iterable, List, Optional
+from urllib.parse import urlparse
 
 import yt_dlp
 from yt_dlp.utils import DownloadError
@@ -49,6 +51,7 @@ class TrackMetadata:
     thumbnail: Optional[str]
     description: Optional[str]
     tags: List[str]
+    file_type: str
 
 
 def search_tracks(
@@ -60,6 +63,8 @@ def search_tracks(
     order: str = "relevance",
     js_runtime: Optional[str] = None,
     remote_components: Optional[List[str]] = None,
+    chunk_size: int = 10,
+    progress_callback: Optional[Callable[[TrackMetadata], None]] = None,
 ) -> List[TrackMetadata]:
     """
     Search YouTube for the requested genre and return metadata entries.
@@ -86,35 +91,60 @@ def search_tracks(
 
     if not merged_terms:
         raise ValueError("genre or artist must be provided")
+
     prefix = SEARCH_PREFIXES.get(order.lower(), "ytsearch")
     query = f"{prefix}{max_results}:{merged_terms}"
 
-    ydl_opts = {
-        "default_search": prefix,
-        "noplaylist": True,
-        "skip_download": True,
-        "quiet": True,
-        "cachedir": False,
-    }
-    if js_runtime:
-        entry = _js_runtime_entry(js_runtime)
-        ydl_opts["js_runtime"] = entry["name"]
-        entry_config = {"path": entry["path"]} if entry.get("path") else {}
-        ydl_opts["js_runtimes"] = {entry["name"]: entry_config}
-    if remote_components:
-        ydl_opts["remote_components"] = remote_components
+    result: List[TrackMetadata] = []
+    retrieved = 0
+    seen_ids: set[str] = set()
+    while retrieved < max_results:
+        chunk = min(chunk_size, max_results - retrieved)
+        playlist_range = f"{retrieved + 1}-{retrieved + chunk}"
 
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            raw_result = ydl.extract_info(query, download=False)
-    except DownloadError as exc:
-        raise RuntimeError("YouTube search failed") from exc
+        ydl_opts = {
+            "default_search": prefix,
+            "noplaylist": True,
+            "skip_download": True,
+            "quiet": True,
+            "cachedir": False,
+            "playlist_items": playlist_range,
+        }
+        if js_runtime:
+            entry = _js_runtime_entry(js_runtime)
+            ydl_opts["js_runtime"] = entry["name"]
+            entry_config = {"path": entry["path"]} if entry.get("path") else {}
+            ydl_opts["js_runtimes"] = {entry["name"]: entry_config}
+        if remote_components:
+            ydl_opts["remote_components"] = remote_components
 
-    entries = _unwrap_entries(raw_result)
-    if filters:
-        entries = [entry for entry in entries if _matches_filters(entry, filters)]
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                raw_result = ydl.extract_info(query, download=False)
+        except DownloadError as exc:
+            raise RuntimeError("YouTube search failed") from exc
 
-    return [_entry_to_metadata(entry) for entry in entries]
+        entries = _unwrap_entries(raw_result)
+        if filters:
+            entries = [entry for entry in entries if _matches_filters(entry, filters)]
+        entries = [entry for entry in entries if entry.get("id") not in seen_ids]
+        if not entries:
+            break
+
+        for entry in entries:
+            if retrieved >= max_results:
+                break
+            metadata = _entry_to_metadata(entry)
+            seen_ids.add(metadata.video_id)
+            if progress_callback:
+                progress_callback(metadata)
+            result.append(metadata)
+            retrieved += 1
+
+        if len(entries) < chunk:
+            break
+
+    return result
 
 
 def _unwrap_entries(raw_result: dict) -> Iterable[dict]:
@@ -169,6 +199,7 @@ def _entry_to_metadata(entry: dict) -> TrackMetadata:
         thumbnail=_select_thumbnail(entry.get("thumbnails")),
         description=entry.get("description"),
         tags=list(entry.get("tags") or []),
+        file_type=_infer_file_type(entry),
     )
 
 
@@ -195,3 +226,45 @@ def _js_runtime_entry(runtime: str) -> dict:
         if lookup:
             entry["path"] = lookup
     return entry
+
+
+def _infer_file_type(entry: dict) -> str:
+    candidates: List[str] = []
+    for key in ("ext", "format", "format_id", "format_note", "mime_type"):
+        value = entry.get(key)
+        if isinstance(value, str) and value.strip():
+            candidates.extend(value.split())
+
+    url = entry.get("webpage_url") or entry.get("url")
+    if url:
+        ext = _extension_from_url(url)
+        if ext:
+            candidates.append(ext)
+
+    for candidate in candidates:
+        normalized = _normalize_file_type(candidate)
+        if normalized:
+            return normalized
+    return "unknown"
+
+
+def _extension_from_url(url: str) -> Optional[str]:
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return None
+    path = parsed.path or ""
+    suffix = Path(path).suffix
+    if suffix:
+        return suffix.lstrip(".")
+    return None
+
+
+def _normalize_file_type(value: str) -> Optional[str]:
+    cleaned = value.strip().lower()
+    if "/" in cleaned:
+        cleaned = cleaned.split("/")[-1]
+    cleaned = cleaned.lstrip(".")
+    if not cleaned:
+        return None
+    return cleaned

@@ -56,7 +56,11 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help="Whether to download files or just gather stream URLs.",
     )
     parser.add_argument("--download-dir", type=Path, default=defaults.download_dir, help="Where to store downloads.")
-    parser.add_argument("--audio-format", default=defaults.audio_format, help="Target audio format for downloads.")
+    parser.add_argument(
+        "--audio-format",
+        default=defaults.audio_format,
+        help="Target output format (mp3 for audio, mp4 for video) for downloads.",
+    )
     parser.add_argument("--bitrate", default="192", help="Target bitrate (kbps) for downloads.")
     parser.add_argument("--stream-format", default=defaults.stream_format, help="Format selector when gathering streams.")
     parser.add_argument("--js-runtime", default=defaults.js_runtime, help="Hint for yt-dlp JS runtime (node, deno, etc.).")

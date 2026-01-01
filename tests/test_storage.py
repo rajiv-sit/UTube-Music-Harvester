@@ -16,6 +16,7 @@ def _example_track() -> TrackMetadata:
         thumbnail=None,
         description=None,
         tags=["trance", "chill"],
+        file_type="mp3",
     )
 
 

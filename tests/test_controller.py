@@ -16,6 +16,7 @@ def _stub_track() -> TrackMetadata:
         thumbnail=None,
         description=None,
         tags=[],
+        file_type="mp3",
     )
 
 

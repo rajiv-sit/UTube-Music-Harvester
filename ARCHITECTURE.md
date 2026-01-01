@@ -1,23 +1,70 @@
 ## UTube Music Harvester Architecture
 
 ### Overview
-UTube is designed as a Python-first harvester that connects a CLI/GUI front end to a yt-dlp powered backend pipeline. 
-The goal is to let users describe what musical content they need (genre, artist, filters), then either download audio assets or resolve stream URLs while respecting environment defaults (download paths, JS runtime, remote components).
+UTube is designed as a Python-first harvester that connects a CLI/Qt GUI front end to a yt-dlp + FFmpeg powered backend pipeline. Users describe their music needs (genre, artist, filter buckets, mp3/mp4 preference) and the controller either downloads audio/video assets or resolves stream URLs. Every step honors shared defaults (download directory, JS runtime, remote components, video quality so the CLI and GUI remain in sync).
 
 ### Core Components
-- **Configuration** (`src/utube/config.py`): reads `.env` overrides, detects if Node/Deno is available, and exposes defaults for download directory, media formats, JS runtime, and remote component lists. CLI and GUI both share these defaults.
-- **Controller** (`src/utube/controller.py`): translates `MediaRequest` objects into extraction/filter requests and forwards the results either to `DownloadManager` or `Streamer`. It now propagates the JS runtime + remote component settings to every downstream yt-dlp call.
-- **Extractor** (`src/utube/extractor.py`): builds yt-dlp search queries, applies filters (duration, views, safe-for-work), and thanks to the helpers now provides `js_runtime` + `remote_components` entries via the `js_runtimes` dict expected by modern yt-dlp releases.
-- **Storage/Streaming** (`src/utube/storage.py`): downloads audio via `DownloadManager` (with FFmpeg postprocessors) or resolves stream URLs via `Streamer`. Both components inject the runtime/component settings, so yt-dlp can solve JS challenges and fetch the richest formats. `_select_format` ensures only audio formats are chosen for streaming previews.
-- **CLI** (`src/utube/cli.py`): wraps the pipeline with `argparse`, exposes `--js-runtime`, `--remote-components`, filters, and `--max-results`, and prints summaries of downloads/stream links. It relies on the shared defaults from `config`.
-- **GUI** (`src/utube/gui.py`): PyQt6 dark-themed application with a sidebar, cards, filter controls, searchable track table, and playback row. It surfaces genre/artist inputs, filter controls (duration, views, keywords), JS runtime/remote component fields, and the “Max entries” spinner. Search/download/stream operations run via `Worker` threads; playback uses `QMediaPlayer` with new rewind/forward/stop buttons, keeping the interface responsive.
+- **Configuration** (`src/utube/config.py`): reads `.env`, detects Node/Deno availability, and exposes defaults (download directory, stream/audio formats, JS runtime, remote components).
+- **Controller** (`src/utube/controller.py`): orchestrates `MediaRequest` → `search_tracks` + `DownloadManager/Streamer`, passing runtime/remote component hints and the UI’s mp3/mp4 preference downstream.
+- **Extractor** (`src/utube/extractor.py`): crafts yt-dlp search queries, applies filters, infers `file_type`, and emits normalized `TrackMetadata` so the GUI can display format/type columns.
+- **Storage/Streaming** (`src/utube/storage.py`): downloads audio/video via FFmpeg postprocessing or resolves stream URLs through `Streamer`, honoring runtime/component overrides and respecting mp3/mp4 preferences.
+- **CLI** (`src/utube/cli.py`): exposes genre/artist filters, runtime/remote components, `max-results`, and download settings; it prints summaries of downloads or stream links.
+- **GUI** (`src/utube/gui.py`): PyQt6 dark theme with sidebar filters, format tabs, waveform/video playback, and playback controls running in Worker threads; it reuses the same controller logic and streams mp3/mp4 preferences downstream.
+
+### Repo layout (diagram)
+```
+UTube/
+├─ assets/
+│   └─ click.wav
+├─ src/
+│   ├─ utube/
+│   │   ├─ cli.py
+│   │   ├─ config.py
+│   │   ├─ controller.py
+│   │   ├─ extractor.py
+│   │   ├─ gui.py
+│   │   └─ storage.py
+│   └─ __pycache__/
+├─ tests/
+│   ├─ test_config.py
+│   ├─ test_controller.py
+│   ├─ test_storage.py
+│   └─ test_storage_integration.py
+├─ ARCHITECTURE.md
+├─ README.md
+├─ pyproject.toml
+├─ .env (example)
+└─ downloads/
+```
 
 ### Data & Control Flow
 1. User input flows from the CLI/GUI into a `MediaRequest` (via `load_defaults` for repeated settings).  
 2. The controller executes `search_tracks` with the provided filters, max results, runtime, and remote components.  
 3. `search_tracks` calls yt-dlp, receives metadata, filters it, and returns track records.  
 4. Depending on the requested mode, the controller either invokes `DownloadManager.download_tracks` or `Streamer.stream_links`.  
-5. Each storage operation configures yt-dlp with `js_runtime`, the `{runtime: {path}}` map, and `remote_components` to ensure Node + EJS helpers are used. Streamer also filters to audio-only formats.
+5. Each storage operation configures yt-dlp with `js_runtime`, the `{runtime: {path}}` map, and `remote_components` to ensure Node + EJS helpers are used. Streamer honors the UI/mp3/mp4 preference and selects the highest-quality candidate that matches its codec expectations.
+
+### Design Flow Chart
+```
+┌────────────────────┐
+│User input (GUI/CLI)│
+└────────┬───────────┘
+         │
+         ▼
+  Format + filter model
+         │
+         ▼
+   search_tracks() ➜ metadata
+         │
+         ▼
+   ┌────────────┐    ┌────────────┐
+   │Download    │    │Streamer    │
+   │Manager     │    │(mp3/mp4)   │
+   └────────────┘    └────────────┘
+         │               │
+         ▼               ▼
+   Downloads          Playback previews
+```
 
 ### UX & Runtime Considerations
 - The GUI is styled with clean cards, dub-ready colors, and a three-zone layout (sidebar, workspace, status).  
@@ -28,4 +75,3 @@ The goal is to let users describe what musical content they need (genre, artist,
 
 ### Testing
 - `tests/` cover config defaults, CLI argument parsing (including remote components), extractor filtering, storage integration, and ensuring the new plumbing works. `python -m pytest` currently passes 17 tests.
-

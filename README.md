@@ -18,7 +18,10 @@ UTube GUI overview
    UTUBE_STREAM_FORMAT=bestaudio/best
    UTUBE_JS_RUNTIME=node
    UTUBE_REMOTE_COMPONENTS=ejs:github
+   UTUBE_VIDEO_QUALITY=high
    ```
+   Set `UTUBE_MEDIA_FORMAT=mp4` (or reuse `UTUBE_AUDIO_FORMAT`) when you need MP4 video downloads instead of audio-only output.
+   Use `UTUBE_VIDEO_QUALITY=high|medium|low` to prefer the desired MP4 resolution when multiple options exist.
    `UTUBE_JS_RUNTIME` ensures yt-dlp uses Node/Deno, and `UTUBE_REMOTE_COMPONENTS` downloads the EJS solver script that YouTube often requires.
 
 ## Running the CLI
@@ -41,21 +44,21 @@ utube-gui
 Then:
 1. Use the genre/artist fields plus filters (duration, views, keywords, safe-for-work).
 2. Set JS runtime (`node` is recommended) and remote components (`ejs:github`) in place to satisfy yt-dlp’s JS challenge requirements.
-3. Adjust **Max entries** to limit how many yt-dlp search hits are fetched (default 10, up to 500).
+3. Adjust **Max entries** by dragging the slider—this is the only control for that limit, and the tooltip reveals the current count. A higher value fetches more hits into the live-updating table.
 4. Click **Search** — results populate the sortable table instantly.
-5. Select a row and click **Play Selected**; use the Rewind/Forward/Stop buttons to control preview playback.
+5. Select a row and click **Play Selected**; use the Rewind/Forward/Stop buttons to control preview playback. MP3 selections stay in the audio player while MP4 selections activate the video canvas and the waveform/seek bar keeps pace.
 6. Select and download tracks using **Download Selected**; change download folder as needed.
 
-Long-running searches/downloads run in `Worker` threads so the UI stays responsive. The dark, card-based theme and sidebar reflect the modern UI direction.
+Long-running searches/downloads run in `Worker` threads and update the table in real time, so the dark, card-based theme, format tabs, and bottom playback bar feel like a cohesive music workspace.
 
 ## Internal architecture
 
-- `src/utube/config.py`: loads `.env`, detects runtime, exposes defaults (`CliDefaults`) that include JS runtime + remote components.
-- `src/utube/controller.py`: turns `MediaRequest` → `search_tracks + DownloadManager/Streamer`, passing runtime + remote component hints everywhere.
-- `src/utube/extractor.py`: builds yt-dlp queries and now injects `js_runtime` plus the `{runtime: {path}}` dict expected by yt-dlp, along with the `remote_components` list.
-- `src/utube/storage.py`: downloads audio via FFmpeg postprocessors or resolves streams, respecting runtime/component defaults and choosing audio-only formats for previews.
-- `src/utube/cli.py`: exposes flags for genre/artist/filters, runtime, remote components, and `max-results`; prints summaries when done.
-- `src/utube/gui.py`: PyQt6 app with sidebar, cards, filters, track table, and playback row; exposes JS runtime, remote components, max entries, and download controls.
+- `src/utube/config.py`: loads `.env`, identifies JS runtimes/remote components, and exposes defaults (download directory, stream format, audio/video quality).
+- `src/utube/controller.py`: orchestrates `MediaRequest`s → `search_tracks` + `DownloadManager`/`Streamer`, passing runtime/component hints and the UI’s mp3/mp4 preference downstream.
+- `src/utube/extractor.py`: crafts yt-dlp search requests, applies filters, infers `file_type`, and returns normalized `TrackMetadata`.
+- `src/utube/storage.py`: contains the downloader (FFmpeg postprocessing) and streamer (mp3/mp4 preference) while honoring runtime/remote component overrides.
+- `src/utube/cli.py`: exposes genre/artist filters, runtime/remote component flags, `max-results`, and download settings; prints summaries of downloads/stream links.
+- `src/utube/gui.py`: Qt6 GUI with docked filters, format tabs, waveform/video playback, and threaded Workers that reuse the same controller logic as the CLI.
 
 ## Common issues & hints
 
