@@ -1,0 +1,95 @@
+Metadata-Version: 2.4
+Name: utube-music-harvester
+Version: 0.1.0
+Summary: Genre-aware YouTube music extraction and filtering pipeline.
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: yt-dlp>=2024.01.01
+Requires-Dist: pydub>=0.25.1
+Requires-Dist: aiohttp>=3.8.7
+Requires-Dist: mutagen<1.48,>=1.43.0
+Requires-Dist: python-dotenv>=1.0.0
+Requires-Dist: PyQt6>=6.6.2
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: mypy>=1.8; extra == "dev"
+
+# UTube Music Harvester
+
+Lightweight pipeline to extract genre-specific tracks from YouTube, apply filters, and make the resulting audio assets available for download or streaming.
+
+## Architecture Overview
+
+1. **Extraction Module:** Uses `yt-dlp` to search YouTube for the requested genre and retrieve metadata (title, duration, channel, upload date, URL).
+2. **Filtering Module:** Applies user-provided criteria (duration bounds, upload date cutoff, view count, safe-for-work flag, etc.) and decides between downloading audio or handing back a stream link.
+3. **Storage/Streaming Module:** Converts/downloads audio via `yt-dlp` + `pydub` and writes it into structured folders (or exposes stream URLs) for downstream consumption.
+
+## Environment & Dependencies
+
+- **Python version:** 3.11 or newer (relies on modern typing and asyncio helpers).
+- **Core libraries:**
+  - `yt-dlp` for interacting with YouTube (searching, extracting metadata, downloading/streaming).
+  - `pydub` for post-processing audio (format conversion, slicing, fade-in/out).
+  - `aiohttp` to support future async streaming or metadata enrichment.
+  - `mutagen` when embedding tags or reading metadata from saved files.
+  - `python-dotenv` to keep credential paths/configuration out of source control.
+- **Development helpers:** `pytest` and `mypy` for testing and type checking.
+- **System requirements:** `ffmpeg` available on PATH to allow `yt-dlp`/`pydub` to transcode audio.
+
+## Setup
+
+```bash
+pip install --upgrade pip
+pip install -e .
+```
+
+Setting up a `.env` file (see `python-dotenv`) allows overriding download paths, genre defaults, or API keys.
+
+## Key Workflow
+
+1. User specifies the desired genre and optional filters (length, upload windows, download vs. stream).
+2. The extractor builds and runs a YouTube search query and returns candidate metadata.
+3. Filtering logic picks the most suitable tracks and forwards them to the storage/streaming handler.
+
+## Orchestration & Storage
+
+- `MediaRequest` describes the genre, filter presets, ordering preference, download vs. stream mode, and destination folder.
+- `fulfill_request` drives the pipeline: it calls `search_tracks`, then dispatches to either `DownloadManager` (which saves audio via `yt-dlp` + `ffmpeg`) or `Streamer` (which gathers stream URLs from the same metadata).
+- Helpers such as `build_track_filename` and `sanitize_filename` keep file names predictable when persisting downloaded media.
+
+## CLI & Async Service
+
+`utube.cli` wraps the harvester inside an async entry point so users can call it with `argparse` options (genre, mode, filters, format hints). It runs `fulfill_request` via `asyncio.to_thread`, prints either downloaded paths or collected stream URLs, and exposes shorthand options such as `--artist`, `--js-runtime`, `--safe-for-work`, `--stream-format`, `--download-dir`, and `--bitrate`. If Node or Deno is on the PATH, the default runtime automatically follows that executable so you usually only need a manual override when the detected runtime isn’t the one you prefer.
+
+```bash
+utube trance --mode download --download-dir ~/Music/utube --audio-format opus --bitrate 256
+utube ambient --mode stream --max-results 5 --stream-format highestaudio
+```
+
+Use `python -m utube.cli` or the installed `utube` script to launch the service.
+
+## GUI Application
+
+Use the `utube-gui` entry point (or `python -m utube.gui`) to start the PyQt6-based interface:
+
+1. Select a genre (optional if you add an artist), max-results/order, and filters (duration, views, keywords, safe-for-work), then click **Search**. Alternatively set the **Artist** field without selecting a genre to bias results.
+2. The sortable table populates title, uploader, duration, views, upload date, and lets you click a track to highlight it.
+3. Click **Play Selected** to resolve the stream URL via `Streamer` and preview it through QtMultimedia, or choose one or more rows plus **Download Selected** to persist audio through `DownloadManager`.
+4. Change the download location via the **Change download folder** button (defaults come from `.env` overrides) so files drop where you expect.
+
+The GUI runs long-running search/download/stream tasks in background threads so the UI stays responsive while the harvester logic does its work.
+
+The interface now targets a flat, dark theme (deep background, surface panels, high-contrast accent) with a permanent sidebar navigation column, rounded cards, and standardized spacing so the experience feels modern and professional on HiDPI / 4K screens.
+
+## Configuration Overrides
+
+Drop a `.env` file (or copy `.env.example`) into the project root to override CLI defaults such as the download directory or preferred audio/stream formats:
+
+```
+UTUBE_DOWNLOAD_DIR=/home/me/Music/utube
+UTUBE_AUDIO_FORMAT=opus
+UTUBE_STREAM_FORMAT=highestaudio
+UTUBE_JS_RUNTIME=node
+```
+
+`utube.cli` reads these values each time `parse_args` runs so you can keep ergonomic defaults without typing long flags. Setting `UTUBE_JS_RUNTIME` (and `--js-runtime`) encourages yt-dlp to use a specific JS runtime such as Node or Deno, avoiding the runtime warnings and enabling richer formats.

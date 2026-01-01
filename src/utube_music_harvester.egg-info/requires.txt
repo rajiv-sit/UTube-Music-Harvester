@@ -1,0 +1,10 @@
+yt-dlp>=2024.01.01
+pydub>=0.25.1
+aiohttp>=3.8.7
+mutagen<1.48,>=1.43.0
+python-dotenv>=1.0.0
+PyQt6>=6.6.2
+
+[dev]
+pytest>=7.0
+mypy>=1.8
