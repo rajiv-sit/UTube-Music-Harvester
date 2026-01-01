@@ -60,6 +60,35 @@ Then:
 
 Long-running searches/downloads run in `Worker` threads and update the table in real time, so the dark, card-based theme, format tabs, and bottom playback bar feel like a cohesive music workspace.
 
+## Using the Qt visualizer
+
+The Qt experience combines waveform, playback controls, and the dedicated media canvas so you understand exactly what is playing:
+
+1. The seek toolbar sits above the waveform. Drag the slider or click the waveform to scrub (the tooltip on the slider reveals the current max entries value). Playback states update the transport buttons and info text.
+2. The waveform mirrors amplitude above/below the center line, fills the area transparently, and highlights the played region in the accent color.
+3. The media canvas below the waveform stays visible even during audio mode; when an MP4 is selected it hosts the video widget, and SoundCloud-style fractal visualization fills the space for MP3 tracks.
+4. Format tabs (Any/MP3/MP4) let you filter results before playback; once a track starts, the media router chooses the appropriate player and updates the now‑playing label, so you can screenshot or record consistent playback states.
+
+<figure>
+![MP3 waveform](assets/mp3-waveform.png)
+<figcaption>Figure 1: Audio mode with the mirrored waveform, transport controls, and the MP3 player active.</figcaption>
+</figure>
+
+<figure>
+![MP4 canvas](assets/mp4-video.png)
+<figcaption>Figure 2: Video mode surfaces the media canvas beneath the controls and shows the MP4 preview.</figcaption>
+</figure>
+
+<figure>
+![Visualizer fill](assets/visualizer-fill.png)
+<figcaption>Figure 3: Fractal visualization fills the media region when only audio is playing, keeping the layout consistent.</figcaption>
+</figure>
+
+<figure>
+![Format tabs](assets/format-tabs.png)
+<figcaption>Figure 4: Format tabs (Any/MP3/MP4) appear adjacent to the filters so you can route mp3-related playback paths.</figcaption>
+</figure>
+
 ## Internal architecture
 
 - `src/utube/config.py`: loads `.env`, identifies JS runtimes/remote components, and exposes defaults (download directory, stream format, audio/video quality).
