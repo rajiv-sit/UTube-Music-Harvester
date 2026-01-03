@@ -699,11 +699,15 @@ class UTubeGui(QMainWindow):
                 enabled=self.defaults.voice_enabled,
                 engine=self.defaults.voice_engine,
                 language=self.defaults.voice_language,
+                model_path=self.defaults.voice_model_path,
             )
             self._voice_engine_warning: Optional[str] = None
         except RuntimeError as exc:
             self.voice_controller = VoiceController(
-                enabled=False, engine=self.defaults.voice_engine, language=self.defaults.voice_language
+                enabled=False,
+                engine=self.defaults.voice_engine,
+                language=self.defaults.voice_language,
+                model_path=self.defaults.voice_model_path,
             )
             self._voice_engine_warning = str(exc)
         self._voice_listening = False
@@ -816,13 +820,19 @@ class UTubeGui(QMainWindow):
         voice_layout = QHBoxLayout()
         self.voice_button = QPushButton("🎙️ Voice")
         self.voice_button.setCheckable(True)
-        self.voice_button.setEnabled(self.voice_controller.enabled)
         self.voice_button.clicked.connect(self._toggle_voice_listening)
         voice_layout.addWidget(self.voice_button)
-        self.voice_status_label = QLabel(self._voice_status_text())
+        voice_layout.addWidget(QLabel("Model"))
+        self.voice_model_combo = QComboBox()
+        voice_layout.addWidget(self.voice_model_combo)
+        self.voice_status_label = QLabel()
         voice_layout.addWidget(self.voice_status_label)
+        self._refresh_voice_status_label()
         voice_layout.addStretch()
         top_grid.addLayout(voice_layout, 5, 0, 1, 4)
+        self._populate_voice_model_combo()
+        self.voice_model_combo.currentIndexChanged.connect(lambda *_: self._on_voice_model_selected())
+        self._reset_voice_controller(self._current_voice_model_path())
 
         layout.addLayout(top_grid)
 
@@ -905,8 +915,78 @@ class UTubeGui(QMainWindow):
         if self._voice_listening:
             return "Listening..."
         if self._voice_engine_warning:
-            return "Voice unavailable"
+            return f"Voice unavailable ({self._voice_engine_warning})"
         return "Voice ready" if self.voice_controller.enabled else "Voice disabled"
+
+    def _refresh_voice_status_label(self) -> None:
+        if not hasattr(self, "voice_status_label"):
+            return
+        self.voice_status_label.setText(self._voice_status_text())
+        self.voice_status_label.setToolTip(self._voice_engine_warning or "")
+
+    def _discover_voice_models(self) -> Dict[str, Path]:
+        models_dir = self.defaults.voice_models_dir
+        if not models_dir.is_absolute():
+            models_dir = (Path.cwd() / models_dir).resolve()
+        entries: dict[str, Path] = {}
+        if models_dir.exists():
+            for child in sorted(models_dir.iterdir()):
+                if child.is_dir():
+                    entries[child.name] = child
+        return entries
+
+    def _populate_voice_model_combo(self) -> None:
+        self.voice_model_combo.clear()
+        models = self._discover_voice_models()
+        override_path = self.defaults.voice_model_path
+        default_name = self.defaults.voice_model_name
+        if default_name not in models and override_path.exists():
+            models[override_path.name] = override_path
+        elif not models and override_path.exists():
+            models[override_path.name] = override_path
+        self._voice_model_map = models
+        entries = list(models.items())
+        for name, path in entries:
+            self.voice_model_combo.addItem(name, str(path))
+        if entries:
+            default_index = next((index for index, (name, _) in enumerate(entries) if name == default_name), 0)
+            self.voice_model_combo.setCurrentIndex(default_index)
+
+    def _current_voice_model_path(self) -> Path:
+        data = self.voice_model_combo.currentData()
+        if data:
+            return Path(str(data))
+        return self.defaults.voice_model_path
+
+    def _build_voice_controller(self, model_path: str) -> VoiceController:
+        try:
+            controller = VoiceController(
+                enabled=self.defaults.voice_enabled,
+                engine=self.defaults.voice_engine,
+                language=self.defaults.voice_language,
+                model_path=model_path,
+            )
+            self._voice_engine_warning = None
+        except RuntimeError as exc:
+            controller = VoiceController(
+                enabled=False,
+                engine=self.defaults.voice_engine,
+                language=self.defaults.voice_language,
+                model_path=model_path,
+            )
+            self._voice_engine_warning = str(exc)
+        return controller
+
+    def _reset_voice_controller(self, model_path: Path) -> None:
+        if self._voice_listening:
+            self._set_voice_listening(False)
+        controller = self._build_voice_controller(str(model_path))
+        self.voice_controller = controller
+        self.voice_button.setEnabled(controller.enabled)
+        self._refresh_voice_status_label()
+
+    def _on_voice_model_selected(self) -> None:
+        self._reset_voice_controller(self._current_voice_model_path())
 
     def _toggle_voice_listening(self) -> None:
         if not self.voice_controller.enabled:
@@ -929,7 +1009,7 @@ class UTubeGui(QMainWindow):
     def _set_voice_listening(self, listening: bool) -> None:
         self._voice_listening = listening
         self.voice_button.setChecked(listening)
-        self.voice_status_label.setText(self._voice_status_text())
+        self._refresh_voice_status_label()
 
     def _on_voice_result(self, payload) -> None:
         command, phrase = payload
@@ -937,7 +1017,7 @@ class UTubeGui(QMainWindow):
         self._dispatch_voice_command(command)
 
     def _on_voice_error(self, message: str) -> None:
-        self._set_status(f\"Voice error: {message}\")
+        self._set_status(f"Voice error: {message}")
 
     def _dispatch_voice_command(self, command: VoiceCommand) -> None:
         if command.command_type == VoiceCommandType.SEARCH and command.query:
@@ -962,7 +1042,7 @@ class UTubeGui(QMainWindow):
 
     def _play_voice_track_by_index(self, index: int) -> None:
         if index < 0 or index >= len(self.tracks):
-            self._set_status(f\"Track number {index + 1} is out of range.\")
+            self._set_status(f"Track number {index + 1} is out of range.")
             return
         self._handle_song_activation(self.tracks[index])
 
@@ -972,7 +1052,7 @@ class UTubeGui(QMainWindow):
             if lowered in (track.title or "").lower():
                 self._handle_song_activation(track)
                 return
-        self._set_status(f\"Could not find '{title}' in the current results.\")
+        self._set_status(f"Could not find '{title}' in the current results.")
 
     def _handle_voice_control(self, action: str) -> None:
         player = self.player_controller.player
@@ -983,7 +1063,7 @@ class UTubeGui(QMainWindow):
         elif action == "stop":
             player.stop()
         else:
-            self._set_status(f\"Voice control '{action}' is not supported yet.\")
+            self._set_status(f"Voice control '{action}' is not supported yet.")
 
     def _build_now_playing_bar(self) -> QWidget:
         bar = QWidget()
@@ -1075,7 +1155,7 @@ class UTubeGui(QMainWindow):
             return
         if self._voice_playlist:
             next_track = self._voice_playlist.pop(0)
-            self._set_status(f\"Playing next track: {next_track.title}\")
+            self._set_status(f"Playing next track: {next_track.title}")
             self._handle_song_activation(next_track)
 
     def _retry_stream(self, track: TrackMetadata) -> None:

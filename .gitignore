@@ -1,1 +1,7 @@
-
+build/
+vosk-models/
+*.egg-info
+*.pyc
+__pycache__/
+src/utube/__pycache__/
+tests/__pycache__/

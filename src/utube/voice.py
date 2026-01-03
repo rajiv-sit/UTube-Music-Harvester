@@ -1,1 +1,259 @@
-"\"\"\"Voice control helpers that parse commands and wrap speech engines.\"\"\"\n+\n+from __future__ import annotations\n+\n+import re\n+from dataclasses import dataclass\n+from enum import Enum, auto\n+from typing import Dict, Optional, Tuple\n+\n+try:\n+    import speech_recognition as sr\n+except ImportError:  # pragma: no cover - voice is optional\n+    sr = None\n+\n+\n+class VoiceCommandType(Enum):\n+    SEARCH = auto()\n+    PLAY_ALL = auto()\n+    PLAY_SPECIFIC = auto()\n+    CONTROL = auto()\n+\n+\n+@dataclass(frozen=True)\n+class VoiceCommand:\n+    command_type: VoiceCommandType\n+    query: Optional[str] = None\n+    index: Optional[int] = None\n+    action: Optional[str] = None\n+\n+\n+class VoiceParser:\n+    _control_map: Dict[str, str] = {\n+        \"pause\": \"pause\",\n+        \"resume\": \"play\",\n+        \"playback\": \"play\",\n+        \"stop\": \"stop\",\n+        \"next\": \"next\",\n+        \"next song\": \"next\",\n+        \"previous\": \"previous\",\n+        \"previous song\": \"previous\",\n+    }\n+\n+    def parse(self, phrase: str) -> VoiceCommand:\n+        normalized = phrase.lower().strip()\n+        if not normalized:\n+            raise ValueError(\"empty voice phrase\")\n+\n+        if \"play all\" in normalized:\n+            return VoiceCommand(command_type=VoiceCommandType.PLAY_ALL)\n+\n+        search_prefixes = (\"search for \", \"find \", \"play some \")\n+        for prefix in search_prefixes:\n+            if normalized.startswith(prefix):\n+                query = normalized[len(prefix) :].strip()\n+                if not query:\n+                    raise ValueError(\"no query supplied\")\n+                return VoiceCommand(command_type=VoiceCommandType.SEARCH, query=query)\n+\n+        match = re.match(r\"play (?:track )?number (\\d+)\", normalized)\n+        if match:\n+            index = int(match.group(1)) - 1\n+            if index < 0:\n+                raise ValueError(\"invalid track number\")\n+            return VoiceCommand(command_type=VoiceCommandType.PLAY_SPECIFIC, index=index)\n+\n+        if normalized.startswith(\"play song \") or normalized.startswith(\"play \"):\n+            remainder = (\n+                normalized.replace(\"play song \", \"\", 1)\n+                if normalized.startswith(\"play song \")\n+                else normalized[5:]\n+            ).strip()\n+            if remainder:\n+                return VoiceCommand(command_type=VoiceCommandType.PLAY_SPECIFIC, query=remainder)\n+\n+        if normalized in self._control_map:\n+            return VoiceCommand(command_type=VoiceCommandType.CONTROL, action=self._control_map[normalized])\n+\n+        raise ValueError(f\"unrecognized voice command: {phrase}\")\n+\n+\n+class SpeechEngine:\n+    def recognize_once(\n+        self,\n+        *,\n+        language: str,\n+        timeout: float,\n+        phrase_time_limit: float,\n+    ) -> str:\n+        raise NotImplementedError\n+\n+\n+class OfflineSpeechEngine(SpeechEngine):\n+    def __init__(self, sample_rate: int = 16000) -> None:\n+        if sr is None:\n+            raise RuntimeError(\"speech_recognition dependency not installed\")\n+        self._recognizer = sr.Recognizer()\n+        self._sample_rate = sample_rate\n+\n+    def recognize_once(\n+        self,\n+        *,\n+        language: str,\n+        timeout: float,\n+        phrase_time_limit: float,\n+    ) -> str:\n+        with sr.Microphone(sample_rate=self._sample_rate) as source:\n+            self._recognizer.adjust_for_ambient_noise(source, duration=0.5)\n+            audio = self._recognizer.listen(\n+                source, timeout=timeout, phrase_time_limit=phrase_time_limit\n+            )\n+        try:\n+            return self._recognizer.recognize_sphinx(audio, language=language)\n+        except sr.UnknownValueError as exc:\n+            raise RuntimeError(\"could not understand speech\") from exc\n+        except sr.RequestError as exc:\n+            raise RuntimeError(\"speech engine error\") from exc\n+\n+\n+class VoiceController:\n+    def __init__(\n+        self,\n+        *,\n+        enabled: bool,\n+        engine: str,\n+        language: str,\n+    ) -> None:\n+        self.enabled = enabled\n+        self.language = language\n+        self.engine = self._build_engine(engine) if enabled else None\n+        self.parser = VoiceParser()\n+\n+    def _build_engine(self, name: str) -> SpeechEngine:\n+        if name == \"offline_default\":\n+            return OfflineSpeechEngine()\n+        raise ValueError(f\"unsupported voice engine: {name}\")\n+\n+    def _ensure_ready(self) -> None:\n+        if not self.enabled:\n+            raise RuntimeError(\"voice control is disabled\")\n+        if self.engine is None:\n+            raise RuntimeError(\"voice engine not available\")\n+\n+    def listen_once(\n+        self,\n+        *,\n+        timeout: float = 5.0,\n+        phrase_time_limit: float = 5.0,\n+    ) -> Tuple[VoiceCommand, str]:\n+        self._ensure_ready()\n+        phrase = self.engine.recognize_once(\n+            language=self.language,\n+            timeout=timeout,\n+            phrase_time_limit=phrase_time_limit,\n+        )\n+        command = self.parser.parse(phrase)\n+        return command, phrase\n*** End Patch
+"""Voice control helpers that parse commands and wrap speech engines."""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+from dataclasses import dataclass
+from enum import Enum, auto
+from pathlib import Path
+from typing import Dict, Optional, Tuple
+
+try:
+    import speech_recognition as sr
+except ImportError:  # pragma: no cover - voice is optional
+    sr = None
+
+try:
+    import sounddevice as sd
+    import vosk
+except ImportError:  # pragma: no cover - optional offline engine
+    sd = None
+    vosk = None
+
+
+class VoiceCommandType(Enum):
+    SEARCH = auto()
+    PLAY_ALL = auto()
+    PLAY_SPECIFIC = auto()
+    CONTROL = auto()
+
+
+@dataclass(frozen=True)
+class VoiceCommand:
+    command_type: VoiceCommandType
+    query: Optional[str] = None
+    index: Optional[int] = None
+    action: Optional[str] = None
+
+
+class VoiceParser:
+    _control_map: Dict[str, str] = {
+        "pause": "pause",
+        "resume": "play",
+        "playback": "play",
+        "stop": "stop",
+        "next": "next",
+        "next song": "next",
+        "previous": "previous",
+        "previous song": "previous",
+    }
+    _number_words: Dict[str, int] = {
+        "zero": 0,
+        "one": 1,
+        "two": 2,
+        "three": 3,
+        "four": 4,
+        "five": 5,
+        "six": 6,
+        "seven": 7,
+        "eight": 8,
+        "nine": 9,
+        "ten": 10,
+        "eleven": 11,
+        "twelve": 12,
+        "thirteen": 13,
+        "fourteen": 14,
+        "fifteen": 15,
+        "sixteen": 16,
+        "seventeen": 17,
+        "eighteen": 18,
+        "nineteen": 19,
+        "twenty": 20,
+    }
+
+    def parse(self, phrase: str) -> VoiceCommand:
+        normalized = phrase.lower().strip()
+        if not normalized:
+            raise ValueError("empty voice phrase")
+
+        if "play all" in normalized:
+            return VoiceCommand(command_type=VoiceCommandType.PLAY_ALL)
+
+        for prefix in ("search for ", "find ", "play some "):
+            if normalized.startswith(prefix):
+                query = normalized[len(prefix) :].strip()
+                if not query:
+                    raise ValueError("no query supplied")
+                return VoiceCommand(command_type=VoiceCommandType.SEARCH, query=query)
+
+        match = re.match(r"play (?:track )?number (\d+|[a-z-]+)", normalized)
+        if match:
+            raw = match.group(1)
+            number = self._parse_track_number(raw)
+            index = number - 1
+            if index < 0:
+                raise ValueError("invalid track number")
+            return VoiceCommand(command_type=VoiceCommandType.PLAY_SPECIFIC, index=index)
+
+        if normalized.startswith("play song ") or normalized.startswith("play "):
+            remainder = (
+                normalized.replace("play song ", "", 1)
+                if normalized.startswith("play song ")
+                else normalized[5:]
+            )
+            remainder = remainder.strip()
+            if remainder:
+                return VoiceCommand(command_type=VoiceCommandType.PLAY_SPECIFIC, query=remainder)
+
+        if normalized in self._control_map:
+            return VoiceCommand(
+                command_type=VoiceCommandType.CONTROL, action=self._control_map[normalized]
+            )
+
+        raise ValueError(f"unrecognized voice command: {phrase}")
+
+    def _parse_track_number(self, token: str) -> int:
+        cleaned = token.lower().strip()
+        if cleaned.isdigit():
+            return int(cleaned)
+        if cleaned in self._number_words:
+            return self._number_words[cleaned]
+        raise ValueError("invalid track number")
+
+
+class SpeechEngine:
+    def recognize_once(self, *, language: str, timeout: float, phrase_time_limit: float) -> str:
+        raise NotImplementedError
+
+
+class OfflineSpeechEngine(SpeechEngine):
+    def __init__(self, sample_rate: int = 16000) -> None:
+        if sr is None:
+            raise RuntimeError("speech_recognition dependency not installed")
+        self._recognizer = sr.Recognizer()
+        self._sample_rate = sample_rate
+
+    def recognize_once(self, *, language: str, timeout: float, phrase_time_limit: float) -> str:
+        with sr.Microphone(sample_rate=self._sample_rate) as source:
+            self._recognizer.adjust_for_ambient_noise(source, duration=0.5)
+            audio = self._recognizer.listen(
+                source, timeout=timeout, phrase_time_limit=phrase_time_limit
+            )
+        try:
+            return self._recognizer.recognize_sphinx(audio, language=language)
+        except sr.UnknownValueError as exc:
+            raise RuntimeError("could not understand speech") from exc
+        except sr.RequestError as exc:
+            raise RuntimeError("speech engine error") from exc
+
+
+class VoskSpeechEngine(SpeechEngine):
+    def __init__(self, model_path: str, sample_rate: Optional[int] = None) -> None:
+        if vosk is None or sd is None:
+            raise RuntimeError("Vosk dependencies are not installed")
+        if not Path(model_path).exists():
+            raise RuntimeError(f"Vosk model not found at {model_path}")
+        self._model = vosk.Model(str(Path(model_path).resolve()))
+        self._preferred_sample_rate = sample_rate
+        self._resolved_device: Optional[int] = None
+        self._resolved_sample_rate: Optional[int] = None
+
+    def recognize_once(self, *, language: str, timeout: float, phrase_time_limit: float) -> str:
+        device, samplerate = self._resolve_audio_device()
+        duration = max(0.1, phrase_time_limit)
+        frames = int(samplerate * duration)
+        try:
+            audio = sd.rec(
+                frames,
+                samplerate=samplerate,
+                channels=1,
+                dtype="int16",
+                device=device,
+                blocking=True,
+            )
+        except Exception as exc:
+            raise RuntimeError(f"unable to record audio: {exc}") from exc
+        recognizer = vosk.KaldiRecognizer(self._model, samplerate)
+        recognizer.AcceptWaveform(audio.tobytes())
+        result = json.loads(recognizer.FinalResult())
+        text = (result.get("text") or "").strip()
+        if not text:
+            raise RuntimeError("could not understand speech")
+        return text
+
+    def _resolve_audio_device(self) -> Tuple[int, int]:
+        if self._resolved_device is not None and self._resolved_sample_rate is not None:
+            return self._resolved_device, self._resolved_sample_rate
+        try:
+            device_index = self._choose_input_device()
+            info = sd.query_devices(device_index)
+        except Exception as exc:
+            raise RuntimeError("unable to access an audio input device") from exc
+        if info.get("max_input_channels", 0) < 1:
+            raise RuntimeError("selected audio device has no input channels")
+        default_samplerate = info.get("default_samplerate") or 16000
+        samplerate = int(self._preferred_sample_rate or default_samplerate)
+        self._resolved_device = device_index
+        self._resolved_sample_rate = samplerate
+        return device_index, samplerate
+
+    def _choose_input_device(self) -> int:
+        try:
+            default_device = sd.default.device
+        except Exception:
+            default_device = None
+        candidate = None
+        if isinstance(default_device, (list, tuple)) and default_device:
+            first = default_device[0]
+            if first is not None and first >= 0:
+                candidate = first
+        if candidate is None:
+            for index, info in enumerate(sd.query_devices()):
+                if info.get("max_input_channels", 0) > 0:
+                    candidate = index
+                    break
+        if candidate is None:
+            raise RuntimeError("no input device is available")
+        return candidate
+
+
+class VoiceController:
+    def __init__(
+        self,
+        *,
+        enabled: bool,
+        engine: str,
+        language: str,
+        model_path: Optional[str] = None,
+    ) -> None:
+        self.enabled = enabled
+        self.language = language
+        self.engine = self._build_engine(engine, model_path) if enabled else None
+        self.parser = VoiceParser()
+
+    def _build_engine(self, name: str, model_path: Optional[str]) -> SpeechEngine:
+        if name == "offline_default":
+            return OfflineSpeechEngine()
+        if name == "vosk_offline":
+            if not model_path:
+                raise RuntimeError("UTUBE_VOICE_MODEL_PATH is required for the Vosk engine")
+            return VoskSpeechEngine(model_path=model_path)
+        raise ValueError(f"unsupported voice engine: {name}")
+
+    def _ensure_ready(self) -> None:
+        if not self.enabled:
+            raise RuntimeError("voice control is disabled")
+        if self.engine is None:
+            raise RuntimeError("voice engine not available")
+
+    def listen_once(
+        self, *, timeout: float = 5.0, phrase_time_limit: float = 5.0
+    ) -> Tuple[VoiceCommand, str]:
+        self._ensure_ready()
+        phrase = self.engine.recognize_once(
+            language=self.language, timeout=timeout, phrase_time_limit=phrase_time_limit
+        )
+        command = self.parser.parse(phrase)
+        return command, phrase
