@@ -1,82 +1,81 @@
-## UTube Music Harvester Architecture
+# UTube Music Harvester Architecture
 
-### Overview
-UTube is designed as a Python-first harvester that connects a CLI/Qt GUI front end to a yt-dlp + FFmpeg powered backend pipeline. Users describe their music needs (genre, artist, filter buckets, mp3/mp4 preference) and the controller either downloads audio/video assets or resolves stream URLs. Every step honors shared defaults (download directory, JS runtime, remote components, video quality so the CLI and GUI remain in sync).
+## Overview
+UTube connects a CLI and a PyQt GUI to a yt-dlp + FFmpeg backend. Users supply genre/artist/keyword filters, voice commands, and quality preferences; a shared defaults layer keeps the CLI, GUI, downloads, previews, and voice controller all aligned. The core design aims for predictable behavior, reusable workers, and cohesive quality targets whether you are streaming, downloading, or dictating commands.
 
-### Core Components
-- **Configuration** (`src/utube/config.py`): reads `.env`, detects Node/Deno availability, and exposes defaults (download directory, stream/audio formats, JS runtime, remote components).
-- **Controller** (`src/utube/controller.py`): orchestrates `MediaRequest` → `search_tracks` + `DownloadManager/Streamer`, passing runtime/remote component hints and the UI’s mp3/mp4 preference downstream.
-- **Extractor** (`src/utube/extractor.py`): crafts yt-dlp search queries, applies filters, infers `file_type`, and emits normalized `TrackMetadata` so the GUI can display format/type columns.
-- **Storage/Streaming** (`src/utube/storage.py`): downloads audio/video via FFmpeg postprocessing or resolves stream URLs through `Streamer`, honoring runtime/component overrides and respecting mp3/mp4 preferences.
-- **Voice control** (`src/utube/voice.py`): runs the speech engine in a background worker, turns recognized phrases into search/play commands, and routes them back into the GUI so voice requests reuse the existing playback pipeline.
-- **Quality profiles** (`src/utube/quality.py`): defines the shared `high`, `medium`, and `data_saving` selectors so CLI/GUI controls and the storage/streaming layers agree on how to pick yt-dlp audio/video candidates.
-- **CLI** (`src/utube/cli.py`): exposes genre/artist filters, runtime/remote components, `max-results`, and download settings; it prints summaries of downloads or stream links.
-- **GUI** (`src/utube/gui.py`): PyQt6 dark theme with sidebar filters, format tabs, waveform/video playback, and playback controls running in Worker threads; it reuses the same controller logic and streams mp3/mp4 preferences downstream.
+## Layers & Components
 
-### Repo layout (diagram)
-```
-UTube/
-├─ assets/
-│   └─ click.wav
-├─ src/
-│   ├─ utube/
-│   │   ├─ cli.py
-│   │   ├─ config.py
-│   │   ├─ controller.py
-│   │   ├─ extractor.py
-│   │   ├─ gui.py
-│   │   └─ storage.py
-│   └─ __pycache__/
-├─ tests/
-│   ├─ test_config.py
-│   ├─ test_controller.py
-│   ├─ test_storage.py
-│   └─ test_storage_integration.py
-├─ ARCHITECTURE.md
-├─ README.md
-├─ pyproject.toml
-├─ .env (example)
-└─ downloads/
-```
+- **Configuration Layer (src/utube/config.py)**  
+  - Loads .env and optional environment overrides.  
+  - Resolves relative paths (downloads, models) against the repo root.  
+  - Detects available JS runtimes (Node/Deno) and flattens remote components.  
+  - Exposes shared defaults for download dirs, stream/audio format selectors, quality profiles, voice engine/model settings, and language.
 
-### Data & Control Flow
-1. User input flows from the CLI/GUI into a `MediaRequest` (via `load_defaults` for repeated settings).  
-2. The controller executes `search_tracks` with the provided filters, max results, runtime, and remote components.  
-3. `search_tracks` calls yt-dlp, receives metadata, filters it, and returns track records.  
-4. Depending on the requested mode, the controller either invokes `DownloadManager.download_tracks` or `Streamer.stream_links`.  
-5. Each storage operation configures yt-dlp with `js_runtime`, the `{runtime: {path}}` map, and `remote_components` to ensure Node + EJS helpers are used. Streamer honors the UI/mp3/mp4 preference and selects the highest-quality candidate that matches its codec expectations.
-6. Voice commands run in a dedicated worker, parse natural-language phrases, and drive the same search/playback handlers so “play all” or “search for ambient” feels identical to typing the command.
-6. Quality profiles drive both download and streaming format selectors so “high” always tries ≥256 kbps audio + ≥1080p/60 fps video, while “medium” and “data_saving” lower the targets consistently across previews and downloads.
+- **Extractor Layer (src/utube/extractor.py)**  
+  - Builds yt-dlp search queries with genre/artist/keyword filters.  
+  - Infers ile_type, duration, views, and other metadata for each track.  
+  - Hides yt-dlp variations behind normalized TrackMetadata records for the UI and controller.
 
-### Design Flow Chart
-```
-┌────────────────────┐
-│User input (GUI/CLI)│
-└────────┬───────────┘
-         │
-         ▼
-  Format + filter model
-         │
-         ▼
-   search_tracks() ➜ metadata
-         │
-         ▼
-   ┌────────────┐    ┌────────────┐
-   │Download    │    │Streamer    │
-   │Manager     │    │(mp3/mp4)   │
-   └────────────┘    └────────────┘
-         │               │
-         ▼               ▼
-   Downloads          Playback previews
-```
+- **Control Layer (src/utube/controller.py)**  
+  - Accepts a MediaRequest, passes filters/quality/format hints to search_tracks, and multiplexes results to DownloadManager or Streamer.  
+  - Ensures JS runtime and remote component hints follow the request into downloads/previews.
 
-### UX & Runtime Considerations
-- The GUI is styled with clean cards, dub-ready colors, and a three-zone layout (sidebar, workspace, status).  
-- Long-running tasks run in `Worker` threads so the UI stays responsive; results trigger table updates and status messages.  
-- Playback controls (rewind/forward/stop) operate directly on `QMediaPlayer`, making it easy to preview before downloading.  
-- `.env` (or `UTUBE_*` overrides) lets users configure download directories, audio formats, stream formats, JS runtime names, and remote components like `ejs:github`. The CLI/GUI automatically pass these values downstream.
-- Default `max_results` is set to 100 but the GUI exposes a spinner for QA to adjust it live.
+- **Storage & Streaming Layer (src/utube/storage.py)**  
+  - DownloadManager handles FFmpeg post-processing, permanent file creation, and cleanup of temporary downloads.  
+  - Streamer selects preview-friendly streams (mp3/mp4) while respecting the current quality profile for parity with downloads.  
+  - Both share selectors (audio bitrate, video resolution/fps) so the user hears/gets what the GUI promises.
 
-### Testing
-- `tests/` cover config defaults, CLI argument parsing (including remote components), extractor filtering, storage integration, and ensuring the new plumbing works. `python -m pytest` currently passes 17 tests.
-- Voice parser/unit tests validate the new command grammar before the worker connects to the GUI.
+- **Quality Profiles (src/utube/quality.py)**  
+  - Defines high, medium, and data_saving profiles mapped to concrete yt-dlp/FFmpeg selectors (e.g., high prefers =256 kbps audio + =1080p/60 fps video).  
+  - The CLI dropdown, GUI combo, DownloadManager, and Streamer all consume these profiles so download/preview quality matches.
+
+- **CLI Entry (src/utube/cli.py)**  
+  - Parses filters, quality profile, remote components, --mode (download/stream), voice toggles, and runtime overrides.  
+  - Normalizes nested --remote-components arguments so runners see a flat list.  
+  - Delegates to the controller for downloads or stream output.
+
+- **GUI Entry (src/utube/gui.py)**  
+  - PyQt6 window with docked filters, format tabs, waveform/video preview, playback controls, status bar, quality profile dropdown, and voice controls.  
+  - Worker threads execute searches, downloads, and preview resolution so the UI stays responsive.  
+  - Reuses the controller + quality pipeline from the CLI so behavior stays consistent across entry points.
+
+- **Voice Layer (src/utube/voice.py)**  
+  - Provides VoiceController, building either osk_offline (preferred) or offline_default (pocketsphinx) engines.  
+  - VoiceParser maps natural-language phrases (search, play-all, track number, title, transport controls) to structured VoiceCommands.  
+  - Qt worker threads run recognition, emit parsed commands, and update the GUI status so voice triggers the same handlers as typed input.
+
+## Data & Control Flow
+
+1. CLI/GUI capture user intent (genre/artist, filters, quality profile, voice toggles) and feed a MediaRequest through load_defaults.  
+2. The controller calls search_tracks with those filters and runtime hints, then routes tracks to downloads or stream previews.  
+3. search_tracks uses yt-dlp + remote components to collect metadata, filters it, and annotates each track with ile_type for GUI rendering.  
+4. DownloadManager/Streamer configure yt-dlp/FFmpeg with the shared quality profile so both downloads and previews target the same bitrate/height/fps combination.  
+5. Voice commands run in a background worker, parse friendly phrases, and route the resulting VoiceCommand back into the existing search/playback handlers.  
+6. Quality profiles remain the single source of truth for download selectors, stream previews, and voice-triggered playback.
+
+## Voice Command Path
+
+- Microphone button toggles a dedicated VoiceController worker.  
+- VoiceParser understands:  
+  - Search triggers: search for, ind, look up, play some, search YouTube for.  
+  - Playlist triggers: play all, play everything, start playing all, play the whole list.  
+  - Track numbers (supporting cardinals and ordinals with 
+umber, 	rack, song).  
+  - Title commands prefixed with play, play song, or play the track.  
+  - Transport controls: pause, esume, continue, stop, 
+ext song, previous song.  
+- Successful recognition produces VoiceCommand objects (SEARCH, PLAY_ALL, PLAY_SPECIFIC, CONTROL) that feed into the GUI handlers, so voice and typed actions share the same logic.
+
+## Runtime & Operational Notes
+
+- .env + UTUBE_* overrides configure downloads, stream selectors, remote components, JS runtime names, quality profile, and voice defaults.  
+- Relative paths (downloads, voice models) resolve against the project root for portability.  
+- Default voice settings point to osk-models/vosk-model-small-en-us-0.15; the GUI lists every folder under osk-models/ so users can switch models without editing files.  
+- Worker threads prevent blocking operations from freezing the GUI; status updates/tables refresh as results arrive.  
+- Voice errors surface in the status label (e.g., Voice unavailable (unable to record audio: ...)).
+
+## Testing Strategy
+
+- 	ests/ cover config defaults, CLI parsing (including remote components), extractor behavior, storage/download integration, streaming logic, and voice parsing for every supported phrase.  
+- Run python -m pytest to validate the pipeline; voice model tests are skipped when osk/sounddevice are missing.  
+- PyQt6 warnings appear if Qt isn't installed in the interpreter; install dependencies in the same virtualenv used to run utube-gui.

@@ -1,123 +1,142 @@
-﻿# UTube Music Harvester
+# UTube Music Harvester
 
-UTube is a Python-first YouTube harvester that exposes both a CLI and a modern Qt GUI. You can search by genre or artist, sprinkle in filters, preview streams, and download the resulting audio assets through yt-dlp + ffmpeg. Everything respects user-overridable defaults (download location, formats, JS runtime, remote components, etc.) so CLI and GUI behave consistently.
+UTube is a Python-first YouTube music harvester that ships with both a CLI and a PyQt6 GUI. The project uses yt-dlp + FFmpeg to fetch the highest-quality audio/video streams that match your genre/artist/keyword search, applies reusable filters (views, duration, safe-for-work), and lets you preview or download the resulting tracks. Every UI (CLI, GUI, or voice) shares the same defaults (download directory, format selectors, quality profile, JS runtime, remote components) so your workflows stay consistent.
 
-## Quick setup
+## Requirements
 
-1. Create a virtualenv (recommended) and install the package:
-   ```bash
-   pip install -e .
-   ```
-2. Copy `.env.example` to `.env` and edit the keys you care about. Essential entries:
-   ```ini
-   UTUBE_DOWNLOAD_DIR=~/Music/utube
-   UTUBE_AUDIO_FORMAT=opus
-   UTUBE_STREAM_FORMAT=bestaudio/best
-   UTUBE_JS_RUNTIME=node
-   UTUBE_REMOTE_COMPONENTS=ejs:github
-   UTUBE_VIDEO_QUALITY=high
-   ```
-   Set `UTUBE_MEDIA_FORMAT=mp4` (or reuse `UTUBE_AUDIO_FORMAT`) when you need MP4 video downloads instead of audio-only output.
-   Use `UTUBE_VIDEO_QUALITY=high|medium|low` to prefer the desired MP4 resolution when multiple options exist.
-   `UTUBE_JS_RUNTIME` ensures yt-dlp uses Node/Deno, and `UTUBE_REMOTE_COMPONENTS` downloads the EJS solver script that YouTube often requires.
+- **Python** =3.11 (3.14 tested locally).
+- **ffmpeg** on your PATH so downloads can be muxed/converted.
+- **Node** or **Deno** if you rely on yt-dlp's JavaScript resolver; UTUBE_JS_RUNTIME hints this to the runtime.
+- **PyQt6** when running utube-gui (installed automatically when you run pip install -e .).
+- Optional **voice extras** (osk, sounddevice, SpeechRecognition, 
+umpy) for offline voice control.
+
+## Installation
+
+`ash
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1   # PowerShell
+pip install -e .
+`
+
+For offline voice control, install the extras:
+
+`ash
+pip install '.[voice]'
+`
+
+## Configuration (.env)
+
+Copy .env.example ? .env and adjust the variables you care about. All options default to reasonable values: 
+
+`ini
+UTUBE_DOWNLOAD_DIR=~/Music/utube
+UTUBE_AUDIO_FORMAT=opus
+UTUBE_STREAM_FORMAT=bestaudio/best
+UTUBE_JS_RUNTIME=node
+UTUBE_REMOTE_COMPONENTS=ejs:github
+UTUBE_VIDEO_QUALITY=high
+UTUBE_VOICE_ENABLED=0
+UTUBE_VOICE_MODELS_DIR=vosk-models
+UTUBE_VOICE_MODEL_NAME=vosk-model-small-en-us-0.15
+UTUBE_VOICE_MODEL_PATH=vosk-models/vosk-model-small-en-us-0.15
+UTUBE_VOICE_LANGUAGE=en-US
+`
+
+- Override UTUBE_MEDIA_FORMAT with mp4 when you want full video downloads.
+- UTUBE_VIDEO_QUALITY accepts high|medium|data_saving (matching the quality profiles defined in src/utube/quality.py).
+- UTUBE_REMOTE_COMPONENTS (e.g., ejs:github) tells yt-dlp which JS helper scripts to fetch.
+- Voice variables are optional, but the GUI exposes the models dropdown and mic toggle when UTUBE_VOICE_ENABLED=1.
 
 ## Running the CLI
 
-Use the installed script:
-```bash
-utube trance --mode download --max-results 40 --audio-format opus --bitrate 256
-utube ambient --mode stream --max-results 10 --safe-for-work
-```
+Search/download from the terminal via utube (installed through pyproject).
 
-Pass `--js-runtime node --remote-components ejs:github` if `.env` doesn't already define them. The CLI prints downloaded file paths or stream URLs, depending on `--mode`.
+`ash
+utube trance --mode download --quality-profile high --max-results 40 --audio-format opus
+utube ambient --mode stream --quality-profile medium --safe-for-work
+`
 
-### Quality profiles
+Key CLI flags:
 
-Choose from the `high`, `medium`, or `data_saving` profiles to control the audio/video selectors that run under the hood (default: `high`, which targets ≥256 kbps audio and ≥1080p/60 fps video while gracefully falling back to lower tiers). Add `--quality-profile medium` (or `data_saving`) on the CLI, or pick the matching dropdown in the GUI, and both downloads and stream previews follow the same profile logic so what you hear while previewing closely matches the saved assets.
+- --mode (download/stream).
+- --quality-profile (high, medium, data_saving) to change yt-dlp format selectors across audio/video.
+- --remote-components (can be repeated) and --js-runtime to override defaults per run.
+- --voice-enabled/--voice-model-path when running scripted voice test utilities.
 
-## GUI Usage
+The CLI prints download summaries or stream URLs depending on the requested mode.
 
-Start the interface with:
-```bash
+## Running the GUI
+
+Launch via:
+
+`ash
 utube-gui
-```
+# or python -m utube.gui (ensures the latest local code runs)
+`
 
-Then:
-1. Use the genre/artist fields plus filters (duration, views, keywords, safe-for-work).
-2. Set JS runtime (`node` is recommended) and remote components (`ejs:github`) in place to satisfy yt-dlp’s JS challenge requirements.
-3. Adjust **Max entries** by dragging the slider—this is the only control for that limit, and the tooltip reveals the current count. A higher value fetches more hits into the live-updating table.
-4. Click **Search** — results populate the sortable table instantly.
-5. Select a row and click **Play Selected**; use the Rewind/Forward/Stop buttons to control preview playback. MP3 selections stay in the audio player while MP4 selections activate the video canvas and the waveform/seek bar keeps pace.
-6. Select and download tracks using **Download Selected**; change download folder as needed.
+Workflow:
 
-Long-running searches/downloads run in `Worker` threads and update the table in real time, so the dark, card-based theme, format tabs, and bottom playback bar feel like a cohesive music workspace.
+1. Enter genre/artist/keywords plus filters (duration, views, safe-for-work, keywords). The format tabs (Any/MP3/MP4) filter the results table.
+2. Pick a quality profile (high/medium/data_saving) and configure JS runtime + remote components if yt-dlp requires them.
+3. Drag the **Max entries** slider to control how many results are fetched.
+4. Click **Search**; results stream into the sortable table.
+5. Double-click a track or click **Play Selected** to preview; the waveform, media canvas, and transport controls stay in sync.
+6. Select tracks and click **Download Selected** to persist them; change download folder with **Change download folder**.
+7. The bottom status bar shows notices (search progress, voice commands, fallback info).
 
-## Using the Qt visualizer
-
-The Qt experience combines waveform, playback controls, and the dedicated media canvas so you understand exactly what is playing:
-
-1. The seek toolbar sits above the waveform. Drag the slider or click the waveform to scrub (the tooltip on the slider reveals the current max entries value). Playback states update the transport buttons and info text.
-2. The waveform mirrors amplitude above/below the center line, fills the area transparently, and highlights the played region in the accent color.
-3. The media canvas below the waveform stays visible even during audio mode; when an MP4 is selected it hosts the video widget, and SoundCloud-style fractal visualization fills the space for MP3 tracks.
-4. Format tabs (Any/MP3/MP4) let you filter results before playback; once a track starts, the media router chooses the appropriate player and updates the now‑playing label, so you can screenshot or record consistent playback states.
-
-<figure>
-<img width="1919" height="1028" alt="image" src="https://github.com/user-attachments/assets/fc982b0d-4881-4546-88de-dcb038092b8c" />
-<figcaption>Figure 1: Audio mode with the filters, and the MP3 player harvester active.</figcaption>
-</figure>
-
-<figure>
-<img width="1910" height="1030" alt="image" src="https://github.com/user-attachments/assets/359118df-db73-4051-9dd0-1cbc44476ab1" />
-<figcaption>Figure 2: Audio mode with the mirrored waveform, transport controls, and the MP3 player active.</figcaption>
-</figure>
-
-<figure>
-<img width="1913" height="1031" alt="image" src="https://github.com/user-attachments/assets/013ef890-87cb-4548-9ee7-fcd1a52dc1a9" />
-<figcaption>Figure 3: Video mode surfaces the media canvas beneath the controls and shows the MP4 preview.</figcaption>
-</figure>
+The GUI reuses the CLI controller logic so downloads, stream resolution, remote component settings, and quality profiles remain consistent between both interfaces.
 
 ## Voice Control (Experimental)
 
-You can now trigger searches and playback using natural language inside the Qt GUI. Toggle the microphone button next to the filters to listen for a single command. Voice control is disabled by default—set `UTUBE_VOICE_ENABLED=1`, install the voice extras with `pip install '.[voice]'`, and point `UTUBE_VOICE_MODEL_PATH` at a downloaded model to run offline. Additional configuration knobs include:
+The mic button near the filters toggles voice listening when UTUBE_VOICE_ENABLED=1. Install the voice extras and download a Vosk model (e.g., osk-model-small-en-us-0.15) under osk-models/.
 
-- `UTUBE_VOICE_ENGINE`: selects the engine (`vosk_offline` by default; `offline_default` still works when `pocketsphinx` is installed).
-- `UTUBE_VOICE_MODELS_DIR`: the directory that holds the bundled Vosk models (defaults to `vosk-models/` inside the repo).
-- `UTUBE_VOICE_MODEL_NAME`: choose which model inside that directory to use (`vosk-model-small-en-us-0.15` by default).
-- `UTUBE_VOICE_MODEL_PATH`: point directly at the model you want (overrides the combination of models dir + name; relative paths are resolved from the project root, so `vosk-models/vosk-model-small-en-us-0.15` works).
-- `UTUBE_VOICE_LANGUAGE`: sets the recognition language (defaults to `en-US`).
+### Voice command coverage (see VOICE_COMMAND.md for the full list)
 
-The repo ships with multiple models under `vosk-models/` (e.g., `vosk-model-small-en-us-0.15`, `vosk-model-en-us-0.22`, `vosk-model-en-us-0.22-lgraph`). The GUI uses `vosk-model-small-en-us-0.15` by default, but you can select any other folder from the model dropdown next to the mic button (the dropdown mirrors the contents of `vosk-models/`), or set `UTUBE_VOICE_MODEL_NAME`/`UTUBE_VOICE_MODEL_PATH` directly.
+1. Search triggers: Search for trance, Search for rock songs, Find jazz music, Play some ambient, Look up Beatles songs, Search YouTube for classical music.
+2. Play everything: Play all songs, Play all, Play everything, Start playing all, Play the whole list.
+3. Play a specific track by title: Play Shape of You, Play the song Shape of You, Play Blinding Lights, Play the track Rolling in the Deep.
+4. Play by number: Play track number one, Play track number five, Play the third song, Play song number four (supports ordinals).
+5. Playback controls: Pause, Resume, Continue, Stop, Next song, Previous song.
 
-Supported commands in v1:
+Voice commands go through VoiceController.listen_once, VoiceParser, and then into the GUI handlers so they behave the same as typed interactions.
 
-1. “Search for `<genre/artist>`”, “Find `<genre>`”, “Play some `<style>`”.
-2. “Play all”, “Play all songs”.
-3. “Play `<song title>`”, “Play song `<title>`”, “Play track number `<N>`”.
-4. “Pause”, “Resume”, “Stop” (next/previous currently surface notifications that they are not yet implemented).
+### Voice configuration
 
-When the engine hears a command it shares the parsed intent with the existing search/playback handlers (the status label shows text like “Heard: ‘Play all songs’”). Failures produce a status update such as “Voice error: could not understand speech”.
+- Download models from https://alphacephei.com/vosk/models and place them in osk-models/ (the repo already carries three example folders).
+- Set UTUBE_VOICE_MODEL_PATH or choose from the GUI dropdown.
+- UTUBE_VOICE_MODEL_NAME defaults to osk-model-small-en-us-0.15 and UTUBE_VOICE_MODELS_DIR=vosk-models.
+- UTUBE_VOICE_ENGINE defaults to osk_offline; offline_default still works when pocketsphinx is installed.
 
-## Internal architecture
+## Quality Profiles Explained
 
-- `src/utube/config.py`: loads `.env`, identifies JS runtimes/remote components, and exposes defaults (download directory, stream format, audio/video quality).
-- `src/utube/controller.py`: orchestrates `MediaRequest`s → `search_tracks` + `DownloadManager`/`Streamer`, passing runtime/component hints and the UI’s mp3/mp4 preference downstream.
-- `src/utube/extractor.py`: crafts yt-dlp search requests, applies filters, infers `file_type`, and returns normalized `TrackMetadata`.
-- `src/utube/storage.py`: contains the downloader (FFmpeg postprocessing) and streamer (mp3/mp4 preference) while honoring runtime/remote component overrides.
-- `src/utube/cli.py`: exposes genre/artist filters, runtime/remote component flags, `max-results`, and download settings; prints summaries of downloads/stream links.
-- `src/utube/gui.py`: Qt6 GUI with docked filters, format tabs, waveform/video playback, and threaded Workers that reuse the same controller logic as the CLI.
+- high: =256 kbps audio, =1080p/60 fps video. Primary target for downloads and streaming.
+- medium: =160 kbps audio, =720p video, balanced quality/cost.
+- data_saving: lower bitrate and resolution caps for bandwidth-sensitive use cases.
 
-## Common issues & hints
+The quality profile feeds both downloads and stream previews so what you hear while previewing closely matches the saved output.
 
-- **“No supported JavaScript runtime” warning**: ensure Node (or Deno) is installed and `UTUBE_JS_RUNTIME` points at it (e.g., `node`, `C:\Program Files\nodejs\node.exe`). Restart the CLI/GUI after editing `.env`.
-- **Challenge solver script missing**: add `UTUBE_REMOTE_COMPONENTS=ejs:github` or pass `--remote-components ejs:github`; the GUI field does this too.
-- **ffmpeg missing**: install ffmpeg and make sure it’s on your PATH so downloads succeed.
-- **No tracks returned**: raise “Max entries”, loosen duration/view filters, or broaden the genre/artist query.
-- **Tk-like warnings in GUI**: install `PyQt6` and `PyQt6-sip`. Use the same Python environment where you run the CLI.
+## Running Tests
 
-## Testing
-
-```bash
+`ash
 python -m pytest
-```
+`
 
-The test suite covers config defaults, CLI parsing (including remote components), extractor filtering, and storage integration. Rename or temporarily move `.env` if you don’t want your overrides to influence the tests.
+Tests cover config defaults, CLI parsing, extractor filtering, storage/download integration, quality profiles, and voice parsing. Voice model tests are skipped unless osk, sounddevice, and 
+umpy are installed.
+
+## Troubleshooting
+
+- **No JS runtime found**: install Node/Deno and update UTUBE_JS_RUNTIME or pass --js-runtime.
+- **Remote components missing**: ensure UTUBE_REMOTE_COMPONENTS=ejs:github or pass --remote-components ejs:github.
+- **ffmpeg not on PATH**: install ffmpeg (e.g., via choco/brew) and restart shell.
+- **Voice fails to record**: install the voice extras (pip install '.[voice]'), ensure NumPy is available, and check the status label for specific errors.
+- **Voice models not loaded**: point UTUBE_VOICE_MODEL_PATH at a real model directory (e.g., osk-models/vosk-model-small-en-us-0.15) or switch via the GUI dropdown.
+
+## Architecture + Design References
+
+- Architecture details and diagrams: ARCHITECTURE.md.
+- Voice command grammar: VOICE_COMMAND.md.
+- Optional dependency list (voice extras): pyproject.toml under [project.optional-dependencies].
+
+With these pieces in place, you can run CLI workflows, explore the GUI, and experiment with hands-free voice control while the shared controller/quality pipeline keeps behavior predictable.
