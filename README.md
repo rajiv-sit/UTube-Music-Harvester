@@ -8,12 +8,12 @@ UTube is a Python-first YouTube music harvester that exposes both a CLI and a Py
 - **ffmpeg** on your PATH for format conversion.
 - **Node** or **Deno** when yt-dlp needs JavaScript execution (UTUBE_JS_RUNTIME).
 - **PyQt6** when running utube-gui (installed automatically when you install the package).
-- Optional voice extras (osk, sounddevice, SpeechRecognition, 
+- Optional voice extras ( osk, sounddevice, SpeechRecognition, 
 umpy) for offline voice control.
 
 ## Installation
 
-`ash
+` ash
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1   # use the right activation for your shell
 pip install -e .
@@ -21,7 +21,7 @@ pip install -e .
 
 To add voice support:
 
-`ash
+` ash
 pip install '.[voice]'
 `
 
@@ -52,7 +52,7 @@ UTUBE_VOICE_LANGUAGE=en-US
 
 Sample usage:
 
-`ash
+` ash
 utube trance --mode download --quality-profile high --max-results 40 --audio-format opus
 utube ambient --mode stream --quality-profile medium --safe-for-work
 `
@@ -70,7 +70,7 @@ The CLI prints download summaries or stream URLs depending on the requested mode
 
 Launch the Qt interface via:
 
-`ash
+` ash
 utube-gui
 # or python -m utube.gui to pick up the latest local code
 `
@@ -99,7 +99,7 @@ The Qt experience centers around a sleek dashboard with filters on the left, res
 
 ## Voice Control (Experimental)
 
-Voice lets you search/play hands-free when UTUBE_VOICE_ENABLED=1. Install the voice extras, download a Vosk model into osk-models/, and toggle the mic button near the filters. The GUI shows the current voice status and the dropdown lists every folder inside osk-models/.
+Voice lets you search/play hands-free when UTUBE_VOICE_ENABLED=1. Install the voice extras, download a Vosk model into  osk-models/, and toggle the mic button near the filters. The GUI shows the current voice status and the dropdown lists every folder inside  osk-models/.
 
 Supported commands include:
 
@@ -113,7 +113,7 @@ Voice commands parse into VoiceCommand structures that drive the same GUI handle
 
 ### Voice models directory
 
-The repo tracks osk-models/ with a placeholder .gitkeep, but the actual model binaries are not included. Download the desired model (e.g., osk-model-small-en-us-0.15) from https://alphacephei.com/vosk/models and place it under osk-models/. Rename or add folders as needed; the GUI dropdown next to the mic button mirrors the directory contents.
+The repo tracks  osk-models/ with a placeholder .gitkeep, but the actual model binaries are not included. Download the desired model (e.g.,  osk-model-small-en-us-0.15) from https://alphacephei.com/vosk/models and place it under  osk-models/. Rename or add folders as needed; the GUI dropdown next to the mic button mirrors the directory contents.
 
 ## Quality Profiles
 
@@ -125,11 +125,11 @@ Both downloads and stream previews reference the same profile so the live experi
 
 ## Running Tests
 
-`ash
+` ash
 python -m pytest
 `
 
-Tests cover config defaults, CLI parsing, extractor filtering, storage/download integration, quality profiles, and voice parsing. Voice model tests skip when osk/sounddevice/
+Tests cover config defaults, CLI parsing, extractor filtering, storage/download integration, quality profiles, and voice parsing. Voice model tests skip when  osk/sounddevice/
 umpy are missing.
 
 ## Troubleshooting
