@@ -62,7 +62,8 @@ UTube connects a CLI and a PyQt GUI to a yt-dlp + FFmpeg backend. Users supply g
   - Track numbers (supporting cardinals and ordinals with 
 umber, 	rack, song).  
   - Title commands prefixed with play, play song, or play the track.  
-  - Transport controls: pause, esume, continue, stop, 
+  - Transport controls: pause, 
+esume, continue, stop, 
 ext song, previous song.  
 - Successful recognition produces VoiceCommand objects (SEARCH, PLAY_ALL, PLAY_SPECIFIC, CONTROL) that feed into the GUI handlers, so voice and typed actions share the same logic.
 
@@ -79,3 +80,32 @@ ext song, previous song.
 - 	ests/ cover config defaults, CLI parsing (including remote components), extractor behavior, storage/download integration, streaming logic, and voice parsing for every supported phrase.  
 - Run python -m pytest to validate the pipeline; voice model tests are skipped when osk/sounddevice are missing.  
 - PyQt6 warnings appear if Qt isn't installed in the interpreter; install dependencies in the same virtualenv used to run utube-gui.
+
+## Architecture Diagram
+
+`
+                     [User input (CLI / GUI / Voice)]
+                                  |
+                           load_defaults()
+                                  |
+                          MediaRequest (filters)
+                      /           |            \
+                     /            |             \
+             search_tracks()   Voice layer   Quality profiles
+                   |              |               |
+       +----------------------+  |   +----------------------+
+       | Search results (yt-dlp) |  |   | high / medium / data_saving |
+       +----------------------+  |   +----------------------+
+                   |             |               |
+          +------------------+   |      +-----------------+
+          | Controller routes|   |      | Shared selectors|
+          | to downloads/streams|  |      | for downloads/previews |
+          +------------------+   |      +-----------------+
+                   |             |               |
+       +----------------------+  |  +-----------------------+
+       | DownloadManager /     |  |  | VoiceParser -> VoiceCommand |
+       | Streamer (mp3/mp4)    |  |  | dispatches to GUI handlers |
+       +----------------------+  |  +--------------------------+
+                   |             |
+               Downloads      Playback previews
+`

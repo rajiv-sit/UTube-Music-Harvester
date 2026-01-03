@@ -1,5 +1,4 @@
 build/
-vosk-models/
 *.egg-info
 *.pyc
 __pycache__/
