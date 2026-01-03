@@ -76,6 +76,22 @@ The Qt experience combines waveform, playback controls, and the dedicated media 
 <figcaption>Figure 3: Video mode surfaces the media canvas beneath the controls and shows the MP4 preview.</figcaption>
 </figure>
 
+## Voice Control (Experimental)
+
+You can now trigger searches and playback using natural language inside the Qt GUI. Toggle the microphone button next to the filters to listen for a single command. Voice control is disabled by default—set `UTUBE_VOICE_ENABLED=1` and install `speech_recognition` if you want the offline Sphinx engine to work. Additional environment variables include:
+
+- `UTUBE_VOICE_ENGINE`: selects the engine (`offline_default` by default).
+- `UTUBE_VOICE_LANGUAGE`: sets the recognition language (defaults to `en-US`).
+
+Supported commands in v1:
+
+1. “Search for `<genre/artist>`”, “Find `<genre>`”, “Play some `<style>`”.
+2. “Play all”, “Play all songs”.
+3. “Play `<song title>`”, “Play song `<title>`”, “Play track number `<N>`”.
+4. “Pause”, “Resume”, “Stop” (next/previous currently surface notifications that they are not yet implemented).
+
+When the engine hears a command it shares the parsed intent with the existing search/playback handlers (the status label shows text like “Heard: ‘Play all songs’”). Failures produce a status update such as “Voice error: could not understand speech”.
+
 ## Internal architecture
 
 - `src/utube/config.py`: loads `.env`, identifies JS runtimes/remote components, and exposes defaults (download directory, stream format, audio/video quality).

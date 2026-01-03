@@ -16,6 +16,9 @@ def test_load_defaults_respects_env(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setenv("UTUBE_AUDIO_FORMAT", "opus")
     monkeypatch.setenv("UTUBE_STREAM_FORMAT", "highestaudio")
     monkeypatch.setenv("UTUBE_QUALITY_PROFILE", "data_saving")
+    monkeypatch.setenv("UTUBE_VOICE_ENABLED", "1")
+    monkeypatch.setenv("UTUBE_VOICE_ENGINE", "offline_default")
+    monkeypatch.setenv("UTUBE_VOICE_LANGUAGE", "pt-BR")
     monkeypatch.setenv("UTUBE_SKIP_DOTENV", "1")
 
     reloaded = _reload_config()
@@ -24,6 +27,9 @@ def test_load_defaults_respects_env(monkeypatch, tmp_path: Path) -> None:
     assert defaults.audio_format == "mp4"
     assert defaults.stream_format == "highestaudio"
     assert defaults.quality_profile == "data_saving"
+    assert defaults.voice_enabled
+    assert defaults.voice_engine == "offline_default"
+    assert defaults.voice_language == "pt-BR"
 
 
 def test_load_defaults_respects_legacy_audio_env(monkeypatch) -> None:
@@ -35,6 +41,8 @@ def test_load_defaults_respects_legacy_audio_env(monkeypatch) -> None:
     defaults = reloaded.load_defaults()
     assert defaults.audio_format == "aac"
     assert defaults.quality_profile == DEFAULT_PROFILE_NAME
+    assert defaults.voice_enabled is False
+    assert defaults.voice_language == "en-US"
 
 
 def test_load_defaults_falls_back_to_defaults(monkeypatch) -> None:
@@ -52,3 +60,6 @@ def test_load_defaults_falls_back_to_defaults(monkeypatch) -> None:
     assert isinstance(defaults.download_dir, Path)
     assert defaults.remote_components == []
     assert defaults.quality_profile == DEFAULT_PROFILE_NAME
+    assert defaults.voice_enabled is False
+    assert defaults.voice_engine == "offline_default"
+    assert defaults.voice_language == "en-US"

@@ -65,6 +65,7 @@ from .config import load_defaults
 from .controller import DownloadManager, Streamer
 from .extractor import SearchFilters, TrackMetadata, search_tracks
 from .quality import DEFAULT_PROFILE_NAME, QUALITY_PROFILE_MAP
+from .voice import VoiceCommand, VoiceCommandType, VoiceController
 
 try:
     import yt_dlp
@@ -693,6 +694,20 @@ class UTubeGui(QMainWindow):
         self.setWindowTitle("UTube Music Harvester")
         self.thread_pool = QThreadPool()
         self.defaults = load_defaults()
+        try:
+            self.voice_controller = VoiceController(
+                enabled=self.defaults.voice_enabled,
+                engine=self.defaults.voice_engine,
+                language=self.defaults.voice_language,
+            )
+            self._voice_engine_warning: Optional[str] = None
+        except RuntimeError as exc:
+            self.voice_controller = VoiceController(
+                enabled=False, engine=self.defaults.voice_engine, language=self.defaults.voice_language
+            )
+            self._voice_engine_warning = str(exc)
+        self._voice_listening = False
+        self._voice_playlist: List[TrackMetadata] = []
         self.sound_manager = SoundManager(self)
         self.player_controller = PlayerController(self)
         self.library_view = LibraryView(self)
@@ -798,6 +813,16 @@ class UTubeGui(QMainWindow):
         if idx >= 0:
             self.quality_profile_combo.setCurrentIndex(idx)
         top_grid.addWidget(self.quality_profile_combo, 4, 1)
+        voice_layout = QHBoxLayout()
+        self.voice_button = QPushButton("🎙️ Voice")
+        self.voice_button.setCheckable(True)
+        self.voice_button.setEnabled(self.voice_controller.enabled)
+        self.voice_button.clicked.connect(self._toggle_voice_listening)
+        voice_layout.addWidget(self.voice_button)
+        self.voice_status_label = QLabel(self._voice_status_text())
+        voice_layout.addWidget(self.voice_status_label)
+        voice_layout.addStretch()
+        top_grid.addLayout(voice_layout, 5, 0, 1, 4)
 
         layout.addLayout(top_grid)
 
@@ -876,6 +901,90 @@ class UTubeGui(QMainWindow):
         card.setLayout(layout)
         return card
 
+    def _voice_status_text(self) -> str:
+        if self._voice_listening:
+            return "Listening..."
+        if self._voice_engine_warning:
+            return "Voice unavailable"
+        return "Voice ready" if self.voice_controller.enabled else "Voice disabled"
+
+    def _toggle_voice_listening(self) -> None:
+        if not self.voice_controller.enabled:
+            self._set_status("Voice control is disabled. Check UTUBE_VOICE_ENABLED.")
+            return
+        if self._voice_listening:
+            self._set_voice_listening(False)
+            return
+        self._start_voice_listening()
+
+    def _start_voice_listening(self) -> None:
+        self._set_voice_listening(True)
+        worker = Worker(self.voice_controller.listen_once)
+        worker.signals.finished.connect(self._on_voice_result)
+        worker.signals.finished.connect(lambda *_: self._set_voice_listening(False))
+        worker.signals.error.connect(self._on_voice_error)
+        worker.signals.error.connect(lambda *_: self._set_voice_listening(False))
+        self.thread_pool.start(worker)
+
+    def _set_voice_listening(self, listening: bool) -> None:
+        self._voice_listening = listening
+        self.voice_button.setChecked(listening)
+        self.voice_status_label.setText(self._voice_status_text())
+
+    def _on_voice_result(self, payload) -> None:
+        command, phrase = payload
+        self._set_status(f"Heard: '{phrase}'")
+        self._dispatch_voice_command(command)
+
+    def _on_voice_error(self, message: str) -> None:
+        self._set_status(f\"Voice error: {message}\")
+
+    def _dispatch_voice_command(self, command: VoiceCommand) -> None:
+        if command.command_type == VoiceCommandType.SEARCH and command.query:
+            self.genre_input.setText(command.query)
+            self._start_search()
+        elif command.command_type == VoiceCommandType.PLAY_ALL:
+            self._play_all_voice_tracks()
+        elif command.command_type == VoiceCommandType.PLAY_SPECIFIC:
+            if command.index is not None:
+                self._play_voice_track_by_index(command.index)
+            elif command.query:
+                self._play_voice_track_by_title(command.query)
+        elif command.command_type == VoiceCommandType.CONTROL and command.action:
+            self._handle_voice_control(command.action)
+
+    def _play_all_voice_tracks(self) -> None:
+        if not self.tracks:
+            self._set_status("No tracks are available to play.")
+            return
+        self._voice_playlist = list(self.tracks[1:])
+        self._handle_song_activation(self.tracks[0])
+
+    def _play_voice_track_by_index(self, index: int) -> None:
+        if index < 0 or index >= len(self.tracks):
+            self._set_status(f\"Track number {index + 1} is out of range.\")
+            return
+        self._handle_song_activation(self.tracks[index])
+
+    def _play_voice_track_by_title(self, title: str) -> None:
+        lowered = title.lower()
+        for track in self.tracks:
+            if lowered in (track.title or "").lower():
+                self._handle_song_activation(track)
+                return
+        self._set_status(f\"Could not find '{title}' in the current results.\")
+
+    def _handle_voice_control(self, action: str) -> None:
+        player = self.player_controller.player
+        if action == "pause":
+            player.pause()
+        elif action == "play":
+            player.play()
+        elif action == "stop":
+            player.stop()
+        else:
+            self._set_status(f\"Voice control '{action}' is not supported yet.\")
+
     def _build_now_playing_bar(self) -> QWidget:
         bar = QWidget()
         layout = QHBoxLayout()
@@ -952,16 +1061,22 @@ class UTubeGui(QMainWindow):
             self._set_status("Playback failed multiple times; track has been paused.")
 
     def _on_media_status_changed(self, status: QMediaPlayer.MediaStatus) -> None:
-        if status != QMediaPlayer.MediaStatus.EndOfMedia or not self._loop_enabled:
+        if status != QMediaPlayer.MediaStatus.EndOfMedia:
             return
-        track = self.player_controller.current_track()
-        if not track:
+        if self._loop_enabled:
+            track = self.player_controller.current_track()
+            if not track:
+                return
+            last_stream = self._last_streams.get(track.video_id)
+            if not last_stream:
+                return
+            self._set_status("Looping current track...")
+            self.player_controller.play_track(track, last_stream, self.library_view.is_video(track))
             return
-        last_stream = self._last_streams.get(track.video_id)
-        if not last_stream:
-            return
-        self._set_status("Looping current track...")
-        self.player_controller.play_track(track, last_stream, self.library_view.is_video(track))
+        if self._voice_playlist:
+            next_track = self._voice_playlist.pop(0)
+            self._set_status(f\"Playing next track: {next_track.title}\")
+            self._handle_song_activation(next_track)
 
     def _retry_stream(self, track: TrackMetadata) -> None:
         prefer_video = self._should_prefer_video(track)

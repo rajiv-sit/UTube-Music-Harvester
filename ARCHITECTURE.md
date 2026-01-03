@@ -8,6 +8,7 @@ UTube is designed as a Python-first harvester that connects a CLI/Qt GUI front e
 - **Controller** (`src/utube/controller.py`): orchestrates `MediaRequest` → `search_tracks` + `DownloadManager/Streamer`, passing runtime/remote component hints and the UI’s mp3/mp4 preference downstream.
 - **Extractor** (`src/utube/extractor.py`): crafts yt-dlp search queries, applies filters, infers `file_type`, and emits normalized `TrackMetadata` so the GUI can display format/type columns.
 - **Storage/Streaming** (`src/utube/storage.py`): downloads audio/video via FFmpeg postprocessing or resolves stream URLs through `Streamer`, honoring runtime/component overrides and respecting mp3/mp4 preferences.
+- **Voice control** (`src/utube/voice.py`): runs the speech engine in a background worker, turns recognized phrases into search/play commands, and routes them back into the GUI so voice requests reuse the existing playback pipeline.
 - **Quality profiles** (`src/utube/quality.py`): defines the shared `high`, `medium`, and `data_saving` selectors so CLI/GUI controls and the storage/streaming layers agree on how to pick yt-dlp audio/video candidates.
 - **CLI** (`src/utube/cli.py`): exposes genre/artist filters, runtime/remote components, `max-results`, and download settings; it prints summaries of downloads or stream links.
 - **GUI** (`src/utube/gui.py`): PyQt6 dark theme with sidebar filters, format tabs, waveform/video playback, and playback controls running in Worker threads; it reuses the same controller logic and streams mp3/mp4 preferences downstream.
@@ -42,8 +43,9 @@ UTube/
 1. User input flows from the CLI/GUI into a `MediaRequest` (via `load_defaults` for repeated settings).  
 2. The controller executes `search_tracks` with the provided filters, max results, runtime, and remote components.  
 3. `search_tracks` calls yt-dlp, receives metadata, filters it, and returns track records.  
-4. Depending on the requested mode, the controller either invokes `DownloadManager.download_tracks` or `Streamer.stream_links`.
+4. Depending on the requested mode, the controller either invokes `DownloadManager.download_tracks` or `Streamer.stream_links`.  
 5. Each storage operation configures yt-dlp with `js_runtime`, the `{runtime: {path}}` map, and `remote_components` to ensure Node + EJS helpers are used. Streamer honors the UI/mp3/mp4 preference and selects the highest-quality candidate that matches its codec expectations.
+6. Voice commands run in a dedicated worker, parse natural-language phrases, and drive the same search/playback handlers so “play all” or “search for ambient” feels identical to typing the command.
 6. Quality profiles drive both download and streaming format selectors so “high” always tries ≥256 kbps audio + ≥1080p/60 fps video, while “medium” and “data_saving” lower the targets consistently across previews and downloads.
 
 ### Design Flow Chart
@@ -77,3 +79,4 @@ UTube/
 
 ### Testing
 - `tests/` cover config defaults, CLI argument parsing (including remote components), extractor filtering, storage integration, and ensuring the new plumbing works. `python -m pytest` currently passes 17 tests.
+- Voice parser/unit tests validate the new command grammar before the worker connects to the GUI.

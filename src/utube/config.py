@@ -28,6 +28,13 @@ def _env_list(env_var: str) -> List[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
+def _env_bool(env_var: str, default: bool = False) -> bool:
+    value = os.getenv(env_var)
+    if value is None:
+        return default
+    return value.lower() in ("1", "true", "yes", "on")
+
+
 def _detect_js_runtime() -> Optional[str]:
     for candidate in ("node", "deno"):
         if shutil.which(candidate):
@@ -44,6 +51,9 @@ class CliDefaults:
     remote_components: List[str]
     video_quality: str
     quality_profile: str
+    voice_enabled: bool
+    voice_engine: str
+    voice_language: str
 
 
 def load_defaults() -> CliDefaults:
@@ -56,4 +66,7 @@ def load_defaults() -> CliDefaults:
         remote_components=_env_list("UTUBE_REMOTE_COMPONENTS"),
         video_quality=os.getenv("UTUBE_VIDEO_QUALITY", "high"),
         quality_profile=os.getenv("UTUBE_QUALITY_PROFILE", DEFAULT_PROFILE_NAME),
+        voice_enabled=_env_bool("UTUBE_VOICE_ENABLED", False),
+        voice_engine=os.getenv("UTUBE_VOICE_ENGINE", "offline_default"),
+        voice_language=os.getenv("UTUBE_VOICE_LANGUAGE", "en-US"),
     )
