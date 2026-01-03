@@ -1,4 +1,5 @@
 build/
+ffmpeg-master-latest-win64-gpl-shared/
 *.egg-info
 *.pyc
 __pycache__/
