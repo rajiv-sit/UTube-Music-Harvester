@@ -83,7 +83,7 @@ ext song, previous song.
 
 ## Architecture Diagram
 
-`
+```
                      [User input (CLI / GUI / Voice)]
                                   |
                            load_defaults()
@@ -108,4 +108,40 @@ ext song, previous song.
        +----------------------+  |  +--------------------------+
                    |             |
                Downloads      Playback previews
-`
+```
+
+## Repository Layout
+
+```
+UTube/
+├─ .env / .env.example
+├─ ARCHITECTURE.md
+├─ README.md
+├─ VOICE_COMMAND.md
+├─ pyproject.toml
+├─ vosk-models/
+│  ├─ .gitkeep
+│  └─ .gitignore
+├─ src/
+│  └─ utube/
+│     ├─ cli.py
+│     ├─ config.py
+│     ├─ controller.py
+│     ├─ extractor.py
+│     ├─ gui.py
+│     ├─ quality.py
+│     ├─ storage.py
+│     └─ voice.py
+└─ tests/
+   ├─ test_cli.py
+   ├─ test_config.py
+   ├─ test_controller.py
+   ├─ test_extractor.py
+   ├─ test_quality.py
+   ├─ test_storage.py
+   ├─ test_storage_integration.py
+   ├─ test_voice.py
+   └─ test_voice_models.py
+```
+
+The tree emphasizes the shared controller/quality pipeline and the modules introduced for voice command recognition, CLI/GUI entry points, and downstream storage/streaming logic.
