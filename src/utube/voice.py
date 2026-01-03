@@ -42,6 +42,7 @@ class VoiceParser:
     _control_map: Dict[str, str] = {
         "pause": "pause",
         "resume": "play",
+        "continue": "play",
         "playback": "play",
         "stop": "stop",
         "next": "next",
@@ -49,28 +50,68 @@ class VoiceParser:
         "previous": "previous",
         "previous song": "previous",
     }
+    _play_all_triggers = (
+        "play all",
+        "play everything",
+        "start playing all",
+        "play the whole list",
+    )
+    _search_prefixes = (
+        "search youtube for ",
+        "search for ",
+        "find ",
+        "play some ",
+        "look up ",
+    )
+    _title_prefixes = (
+        "play the song ",
+        "play song ",
+        "play the track ",
+        "play track ",
+        "play ",
+    )
     _number_words: Dict[str, int] = {
         "zero": 0,
         "one": 1,
+        "first": 1,
         "two": 2,
+        "second": 2,
         "three": 3,
+        "third": 3,
         "four": 4,
+        "fourth": 4,
         "five": 5,
+        "fifth": 5,
         "six": 6,
+        "sixth": 6,
         "seven": 7,
+        "seventh": 7,
         "eight": 8,
+        "eighth": 8,
         "nine": 9,
+        "ninth": 9,
         "ten": 10,
+        "tenth": 10,
         "eleven": 11,
+        "eleventh": 11,
         "twelve": 12,
+        "twelfth": 12,
         "thirteen": 13,
+        "thirteenth": 13,
         "fourteen": 14,
+        "fourteenth": 14,
         "fifteen": 15,
+        "fifteenth": 15,
         "sixteen": 16,
+        "sixteenth": 16,
         "seventeen": 17,
+        "seventeenth": 17,
         "eighteen": 18,
+        "eighteenth": 18,
         "nineteen": 19,
+        "nineteenth": 19,
         "twenty": 20,
+        "twentieth": 20,
     }
 
     def parse(self, phrase: str) -> VoiceCommand:
@@ -78,34 +119,38 @@ class VoiceParser:
         if not normalized:
             raise ValueError("empty voice phrase")
 
-        if "play all" in normalized:
+        if any(trigger in normalized for trigger in self._play_all_triggers):
             return VoiceCommand(command_type=VoiceCommandType.PLAY_ALL)
 
-        for prefix in ("search for ", "find ", "play some "):
+        for prefix in self._search_prefixes:
             if normalized.startswith(prefix):
                 query = normalized[len(prefix) :].strip()
                 if not query:
                     raise ValueError("no query supplied")
                 return VoiceCommand(command_type=VoiceCommandType.SEARCH, query=query)
 
-        match = re.match(r"play (?:track )?number (\d+|[a-z-]+)", normalized)
-        if match:
-            raw = match.group(1)
-            number = self._parse_track_number(raw)
-            index = number - 1
-            if index < 0:
-                raise ValueError("invalid track number")
-            return VoiceCommand(command_type=VoiceCommandType.PLAY_SPECIFIC, index=index)
+        number_match = re.match(
+            r"play(?:\s+the)?\s+(?:track|song)?\s*(?:number\s*)?(\d+|[a-z-]+)", normalized
+        )
+        if number_match:
+            raw = number_match.group(1)
+            try:
+                number = self._parse_track_number(raw)
+            except ValueError:
+                pass
+            else:
+                index = number - 1
+                if index < 0:
+                    raise ValueError("invalid track number")
+                return VoiceCommand(command_type=VoiceCommandType.PLAY_SPECIFIC, index=index)
 
-        if normalized.startswith("play song ") or normalized.startswith("play "):
-            remainder = (
-                normalized.replace("play song ", "", 1)
-                if normalized.startswith("play song ")
-                else normalized[5:]
-            )
-            remainder = remainder.strip()
-            if remainder:
-                return VoiceCommand(command_type=VoiceCommandType.PLAY_SPECIFIC, query=remainder)
+        for prefix in self._title_prefixes:
+            if normalized.startswith(prefix):
+                remainder = normalized[len(prefix) :].strip()
+                if remainder:
+                    return VoiceCommand(
+                        command_type=VoiceCommandType.PLAY_SPECIFIC, query=remainder
+                    )
 
         if normalized in self._control_map:
             return VoiceCommand(
@@ -118,6 +163,8 @@ class VoiceParser:
         cleaned = token.lower().strip()
         if cleaned.isdigit():
             return int(cleaned)
+        if cleaned.endswith(("st", "nd", "rd", "th")) and cleaned[:-2].isdigit():
+            return int(cleaned[:-2])
         if cleaned in self._number_words:
             return self._number_words[cleaned]
         raise ValueError("invalid track number")
