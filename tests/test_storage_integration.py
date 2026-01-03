@@ -47,6 +47,7 @@ def test_download_manager_invokes_yt_dlp(monkeypatch, tmp_path: Path) -> None:
     assert captured["opts"]["postprocessors"][0]["key"] == "FFmpegExtractAudio"
     assert captured["opts"]["postprocessors"][0]["preferredcodec"] == "ogg"
     assert captured["opts"]["remote_components"] == ["ejs:github"]
+    assert captured["opts"]["format"].startswith("bestaudio[abr>=256]")
 
 
 def test_download_manager_video_format_sets_merge(monkeypatch, tmp_path: Path) -> None:
@@ -72,7 +73,8 @@ def test_download_manager_video_format_sets_merge(monkeypatch, tmp_path: Path) -
 
     assert files
     assert files[0].suffix == ".mp4"
-    assert captured["opts"]["format"] == "bestvideo+bestaudio/best"
+    assert "height>=1080" in captured["opts"]["format"]
+    assert "+bestaudio[abr>=256]" in captured["opts"]["format"]
     assert captured["opts"]["merge_output_format"] == "mp4"
     assert captured["opts"]["postprocessors"] == [{"key": "FFmpegMetadata"}]
 

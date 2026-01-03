@@ -2,6 +2,7 @@ import importlib
 from pathlib import Path
 
 import utube.config as config_module
+from utube.quality import DEFAULT_PROFILE_NAME
 
 
 def _reload_config():
@@ -14,6 +15,7 @@ def test_load_defaults_respects_env(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setenv("UTUBE_MEDIA_FORMAT", "mp4")
     monkeypatch.setenv("UTUBE_AUDIO_FORMAT", "opus")
     monkeypatch.setenv("UTUBE_STREAM_FORMAT", "highestaudio")
+    monkeypatch.setenv("UTUBE_QUALITY_PROFILE", "data_saving")
     monkeypatch.setenv("UTUBE_SKIP_DOTENV", "1")
 
     reloaded = _reload_config()
@@ -21,6 +23,7 @@ def test_load_defaults_respects_env(monkeypatch, tmp_path: Path) -> None:
     assert defaults.download_dir == tmp_path / "music"
     assert defaults.audio_format == "mp4"
     assert defaults.stream_format == "highestaudio"
+    assert defaults.quality_profile == "data_saving"
 
 
 def test_load_defaults_respects_legacy_audio_env(monkeypatch) -> None:
@@ -31,6 +34,7 @@ def test_load_defaults_respects_legacy_audio_env(monkeypatch) -> None:
     reloaded = _reload_config()
     defaults = reloaded.load_defaults()
     assert defaults.audio_format == "aac"
+    assert defaults.quality_profile == DEFAULT_PROFILE_NAME
 
 
 def test_load_defaults_falls_back_to_defaults(monkeypatch) -> None:
@@ -47,3 +51,4 @@ def test_load_defaults_falls_back_to_defaults(monkeypatch) -> None:
     assert defaults.stream_format == "bestaudio/best"
     assert isinstance(defaults.download_dir, Path)
     assert defaults.remote_components == []
+    assert defaults.quality_profile == DEFAULT_PROFILE_NAME

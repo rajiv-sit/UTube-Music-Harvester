@@ -29,7 +29,11 @@ utube trance --mode download --max-results 40 --audio-format opus --bitrate 256
 utube ambient --mode stream --max-results 10 --safe-for-work
 ```
 
-Pass `--js-runtime node --remote-components ejs:github` if `.env` doesn’t already define them. The CLI prints downloaded file paths or stream URLs, depending on `--mode`.
+Pass `--js-runtime node --remote-components ejs:github` if `.env` doesn't already define them. The CLI prints downloaded file paths or stream URLs, depending on `--mode`.
+
+### Quality profiles
+
+Choose from the `high`, `medium`, or `data_saving` profiles to control the audio/video selectors that run under the hood (default: `high`, which targets ≥256 kbps audio and ≥1080p/60 fps video while gracefully falling back to lower tiers). Add `--quality-profile medium` (or `data_saving`) on the CLI, or pick the matching dropdown in the GUI, and both downloads and stream previews follow the same profile logic so what you hear while previewing closely matches the saved assets.
 
 ## GUI Usage
 

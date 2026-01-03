@@ -10,6 +10,7 @@ from typing import List, Optional
 
 from . import MediaRequest, SearchFilters, DownloadResult, StreamResult, fulfill_request
 from .config import load_defaults
+from .quality import QUALITY_PROFILE_MAP
 
 
 def _parse_date(value: str) -> datetime.date:
@@ -81,6 +82,12 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser.add_argument("--upload-before", type=_parse_date, help="Latest upload date (YYYY-MM-DD).")
     parser.add_argument("--safe-for-work", action="store_true", help="Prefer non-age restricted content.")
     parser.add_argument("--keywords", help="Extra keywords to append to the genre term.")
+    parser.add_argument(
+        "--quality-profile",
+        choices=QUALITY_PROFILE_MAP.keys(),
+        default=defaults.quality_profile,
+        help="Select a quality profile that drives audio/video selectors.",
+    )
     return parser.parse_args(argv)
 
 
@@ -113,6 +120,7 @@ async def main(argv: Optional[List[str]] = None) -> None:
         stream_format=args.stream_format,
         js_runtime=args.js_runtime,
         remote_components=args.remote_components,
+        quality_profile=args.quality_profile,
     )
 
     result = await asyncio.to_thread(fulfill_request, request)

@@ -44,3 +44,8 @@ def test_parse_args_collector_remote_components() -> None:
         ["ambient", "--remote-components", "ejs:github", "--remote-components", "node:./bin/node"]
     )
     assert args.remote_components == ["ejs:github", "node:./bin/node"]
+
+
+def test_parse_args_quality_profile_flag() -> None:
+    args = cli.parse_args(["trance", "--quality-profile", "medium"])
+    assert args.quality_profile == "medium"

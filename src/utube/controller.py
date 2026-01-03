@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Iterable, List, Literal, Optional, Union
 
 from .extractor import SearchFilters, TrackMetadata, search_tracks
+from .quality import DEFAULT_PROFILE_NAME
 from .storage import DownloadManager, StreamingLink, Streamer
 
 Mode = Literal["download", "stream"]
@@ -27,6 +28,7 @@ class MediaRequest:
     js_runtime: Optional[str] = None
     remote_components: List[str] = field(default_factory=list)
     stream_format: str = "bestaudio/best"
+    quality_profile: str = DEFAULT_PROFILE_NAME
 
 
 @dataclass(frozen=True)
@@ -65,6 +67,7 @@ def fulfill_request(request: MediaRequest) -> Union[DownloadResult, StreamResult
             audio_format=request.audio_format,
             js_runtime=request.js_runtime,
             remote_components=request.remote_components,
+            quality_profile=request.quality_profile,
         )
         files = manager.download_tracks(tracks)
         return DownloadResult(metadata=tracks, files=files)
@@ -73,5 +76,6 @@ def fulfill_request(request: MediaRequest) -> Union[DownloadResult, StreamResult
         format_selector=request.stream_format,
         js_runtime=request.js_runtime,
         remote_components=request.remote_components,
+        quality_profile=request.quality_profile,
     ).stream_links(tracks)
     return StreamResult(metadata=tracks, links=links)

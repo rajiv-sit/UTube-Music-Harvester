@@ -13,6 +13,8 @@ from dotenv import load_dotenv
 if os.getenv("UTUBE_SKIP_DOTENV") != "1":
     load_dotenv()
 
+from .quality import DEFAULT_PROFILE_NAME
+
 
 def _env_path(env_var: str, fallback: Path) -> Path:
     value = os.getenv(env_var)
@@ -41,6 +43,7 @@ class CliDefaults:
     js_runtime: Optional[str]
     remote_components: List[str]
     video_quality: str
+    quality_profile: str
 
 
 def load_defaults() -> CliDefaults:
@@ -52,4 +55,5 @@ def load_defaults() -> CliDefaults:
         js_runtime=env_runtime or _detect_js_runtime(),
         remote_components=_env_list("UTUBE_REMOTE_COMPONENTS"),
         video_quality=os.getenv("UTUBE_VIDEO_QUALITY", "high"),
+        quality_profile=os.getenv("UTUBE_QUALITY_PROFILE", DEFAULT_PROFILE_NAME),
     )

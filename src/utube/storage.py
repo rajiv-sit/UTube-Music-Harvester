@@ -12,6 +12,12 @@ from typing import Iterable, List, Optional, Tuple
 import yt_dlp
 
 from .extractor import TrackMetadata
+from .quality import (
+    DEFAULT_PROFILE_NAME,
+    build_audio_selector,
+    build_video_audio_selector,
+    get_quality_profile,
+)
 
 _VALID_FILENAME = re.compile(r"[^A-Za-z0-9 _\-.]")
 
@@ -47,6 +53,7 @@ class DownloadManager:
         bitrate: str = "192",
         js_runtime: Optional[str] = None,
         remote_components: Optional[List[str]] = None,
+        quality_profile: str = DEFAULT_PROFILE_NAME,
     ) -> None:
         self.base_dir = base_dir.expanduser()
         cleaned_format = audio_format.lstrip(".").lower()
@@ -55,6 +62,9 @@ class DownloadManager:
         self.js_runtime = js_runtime
         self.remote_components = list(remote_components or [])
         self.is_video_output = cleaned_format == "mp4"
+        self.quality_profile = get_quality_profile(quality_profile)
+        self._audio_selector = build_audio_selector(self.quality_profile)
+        self._video_audio_selector = build_video_audio_selector(self.quality_profile)
 
     def download_tracks(self, tracks: Iterable[TrackMetadata]) -> List[Path]:
         """Download the supplied tracks to `base_dir` and return stored paths."""
@@ -71,7 +81,7 @@ class DownloadManager:
     def _download(self, url: str, target: Path) -> None:
         """Invoke `yt-dlp` to download and transcode a single track."""
         output_template = str(target.with_suffix(".%(ext)s"))
-        format_selector = "bestvideo+bestaudio/best" if self.is_video_output else "bestaudio/best"
+        format_selector = self._video_audio_selector if self.is_video_output else self._audio_selector
         ydl_opts = {
             "format": format_selector,
             "outtmpl": output_template,
@@ -109,19 +119,26 @@ class Streamer:
     def __init__(
         self,
         *,
-        format_selector: str = "bestaudio/best",
+        format_selector: Optional[str] = None,
         js_runtime: Optional[str] = None,
         remote_components: Optional[List[str]] = None,
         prefer_video: bool = False,
         video_quality: str = "high",
         preferred_format: Optional[str] = None,
+        quality_profile: str = DEFAULT_PROFILE_NAME,
     ) -> None:
-        self.format_selector = format_selector
-        self.js_runtime = js_runtime
-        self.remote_components = list(remote_components or [])
+        self.profile = get_quality_profile(quality_profile)
         self.prefer_video = prefer_video
         self.video_quality = video_quality
         self.preferred_format = preferred_format
+        selector = format_selector
+        if not selector:
+            selector = (
+                build_video_audio_selector(self.profile) if prefer_video else build_audio_selector(self.profile)
+            )
+        self.format_selector = selector
+        self.js_runtime = js_runtime
+        self.remote_components = list(remote_components or [])
 
     def stream_links(self, tracks: Iterable[TrackMetadata]) -> List[StreamingLink]:
         links = []
@@ -165,7 +182,8 @@ class Streamer:
                     preferred_video = [
                         candidate
                         for candidate in preferred_candidates
-                        if candidate.get("vcodec") not in (None, "none") and candidate.get("acodec") not in (None, "none")
+                        if candidate.get("vcodec") not in (None, "none")
+                        and candidate.get("acodec") not in (None, "none")
                     ]
                     if preferred_video:
                         preferred_video.sort(key=self._video_score, reverse=True)
@@ -176,23 +194,86 @@ class Streamer:
                 return preferred_candidates[0]
 
         if self.prefer_video:
-            video_candidates = [
-                candidate
-                for candidate in formats
-                if candidate.get("vcodec") not in (None, "none") and candidate.get("acodec") not in (None, "none")
-            ]
-            if video_candidates:
-                video_candidates.sort(key=self._video_score, reverse=True)
-                if self.video_quality == "low":
-                    return video_candidates[-1]
-                if self.video_quality == "medium":
-                    return video_candidates[len(video_candidates) // 2]
-                return video_candidates[0]
-
-        for candidate in formats:
-            if candidate.get("acodec") != "none":
+            if candidate := self._select_video_candidate(formats):
                 return candidate
-        return None
+
+        return self._select_audio_candidate(formats)
+
+    def _select_video_candidate(self, formats: List[dict]) -> Optional[dict]:
+        video_candidates = [
+            candidate
+            for candidate in formats
+            if candidate.get("vcodec") not in (None, "none") and candidate.get("acodec") not in (None, "none")
+        ]
+        if not video_candidates:
+            return None
+
+        for requirement in self.profile.video_requirements:
+            matches = [
+                candidate
+                for candidate in video_candidates
+                if self._meets_video_requirement(candidate, requirement)
+            ]
+            if matches:
+                matches.sort(key=self._video_score, reverse=True)
+                return matches[0]
+
+        video_candidates.sort(key=self._video_score, reverse=True)
+        if self.video_quality == "low":
+            return video_candidates[-1]
+        if self.video_quality == "medium":
+            return video_candidates[len(video_candidates) // 2]
+        return video_candidates[0]
+
+    def _select_audio_candidate(self, formats: List[dict]) -> Optional[dict]:
+        audio_candidates = [
+            candidate for candidate in formats if candidate.get("acodec") not in (None, "none")
+        ]
+        if not audio_candidates:
+            return None
+
+        for threshold in self.profile.audio_thresholds:
+            matches = [
+                candidate
+                for candidate in audio_candidates
+                if (candidate.get("abr") or 0) >= threshold
+            ]
+            if selected := self._prefer_audio_codecs(matches):
+                return selected
+
+        return self._prefer_audio_codecs(audio_candidates)
+
+    def _prefer_audio_codecs(self, candidates: List[dict]) -> Optional[dict]:
+        if not candidates:
+            return None
+        candidates.sort(key=self._audio_score, reverse=True)
+        for codec in self.profile.preferred_audio_codecs:
+            codec_lower = codec.lower()
+            for candidate in candidates:
+                if (candidate.get("acodec") or "").lower().startswith(codec_lower):
+                    return candidate
+        return candidates[0]
+
+    def _meets_video_requirement(self, candidate: dict, requirement: "VideoRequirement") -> bool:
+        height = candidate.get("height") or 0
+        if height < requirement.min_height:
+            return False
+        if requirement.min_fps:
+            fps = self._flexible_float(candidate.get("fps"))
+            if fps < requirement.min_fps:
+                return False
+        return True
+
+    def _audio_score(self, candidate: dict) -> Tuple[float, float]:
+        abr = candidate.get("abr") or 0.0
+        tbr = candidate.get("tbr") or 0.0
+        return float(abr), float(tbr)
+
+    def _flexible_float(self, value) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return 0.0
 
     def _video_score(self, candidate: dict) -> Tuple[int, float]:
         height = candidate.get("height") or 0

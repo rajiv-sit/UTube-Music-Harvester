@@ -64,6 +64,7 @@ from PyQt6.QtWidgets import (
 from .config import load_defaults
 from .controller import DownloadManager, Streamer
 from .extractor import SearchFilters, TrackMetadata, search_tracks
+from .quality import DEFAULT_PROFILE_NAME, QUALITY_PROFILE_MAP
 
 try:
     import yt_dlp
@@ -788,6 +789,15 @@ class UTubeGui(QMainWindow):
         )
         self.remote_components_input.setPlaceholderText("ejs:github")
         top_grid.addWidget(self.remote_components_input, 3, 1, 1, 3)
+        top_grid.addWidget(QLabel("Quality profile"), 4, 0)
+        self.quality_profile_combo = QComboBox()
+        for profile in QUALITY_PROFILE_MAP:
+            self.quality_profile_combo.addItem(profile.replace("_", " ").title(), profile)
+        default_profile = self.defaults.quality_profile if self.defaults.quality_profile in QUALITY_PROFILE_MAP else DEFAULT_PROFILE_NAME
+        idx = self.quality_profile_combo.findData(default_profile)
+        if idx >= 0:
+            self.quality_profile_combo.setCurrentIndex(idx)
+        top_grid.addWidget(self.quality_profile_combo, 4, 1)
 
         layout.addLayout(top_grid)
 
@@ -997,6 +1007,7 @@ class UTubeGui(QMainWindow):
             prefer_video=prefer_video,
             video_quality=video_quality,
             preferred_format=preferred_format,
+            quality_profile=self._current_quality_profile(),
         ).stream_links([track])
         if not links:
             raise RuntimeError("Unable to acquire fallback stream link.")
@@ -1042,6 +1053,7 @@ class UTubeGui(QMainWindow):
             prefer_video=prefer_video,
             video_quality=video_quality,
             preferred_format=preferred_format,
+            quality_profile=self._current_quality_profile(),
         ).stream_links([track])
         if not links:
             raise RuntimeError("No stream URL available for the selected track.")
@@ -1072,6 +1084,12 @@ class UTubeGui(QMainWindow):
         if text:
             return [item.strip() for item in text.replace(";", ",").split(",") if item.strip()]
         return self.defaults.remote_components
+
+    def _current_quality_profile(self) -> str:
+        data = self.quality_profile_combo.currentData()
+        if data:
+            return data
+        return self.defaults.quality_profile or DEFAULT_PROFILE_NAME
 
     def _start_search(self) -> None:
         genre = self.genre_input.text().strip()
@@ -1154,6 +1172,7 @@ class UTubeGui(QMainWindow):
             download_dir,
             self._current_js_runtime(),
             self._current_remote_components(),
+            self._current_quality_profile(),
         )
         worker.signals.finished.connect(lambda files: self._set_status(f"Downloaded {len(files)} files."))
         worker.signals.error.connect(self._on_worker_error)
@@ -1165,11 +1184,13 @@ class UTubeGui(QMainWindow):
         download_dir: Path,
         js_runtime: Optional[str],
         remote_components: List[str],
+        quality_profile: str,
     ) -> List[Path]:
         manager = DownloadManager(
             download_dir,
             js_runtime=js_runtime,
             remote_components=remote_components,
+            quality_profile=quality_profile,
         )
         return manager.download_tracks(tracks)
 
