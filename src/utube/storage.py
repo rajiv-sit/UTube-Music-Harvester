@@ -123,13 +123,13 @@ class Streamer:
         js_runtime: Optional[str] = None,
         remote_components: Optional[List[str]] = None,
         prefer_video: bool = False,
-        video_quality: str = "high",
+        video_quality: Optional[str] = None,
         preferred_format: Optional[str] = None,
         quality_profile: str = DEFAULT_PROFILE_NAME,
     ) -> None:
         self.profile = get_quality_profile(quality_profile)
         self.prefer_video = prefer_video
-        self.video_quality = video_quality
+        self.video_quality = (video_quality or "").strip().lower()
         self.preferred_format = preferred_format
         selector = format_selector
         if not selector:
@@ -207,16 +207,19 @@ class Streamer:
         ]
         if not video_candidates:
             return None
-
-        for requirement in self.profile.video_requirements:
+        profile = self._target_video_profile()
+        cap = self._video_quality_cap(profile)
+        for requirement in profile.video_requirements:
             matches = [
                 candidate
                 for candidate in video_candidates
                 if self._meets_video_requirement(candidate, requirement)
             ]
             if matches:
-                matches.sort(key=self._video_score, reverse=True)
-                return matches[0]
+                filtered = self._apply_quality_cap(matches, cap)
+                selected = filtered if filtered else matches
+                selected.sort(key=self._video_score, reverse=True)
+                return selected[0]
 
         video_candidates.sort(key=self._video_score, reverse=True)
         if self.video_quality == "low":
@@ -224,6 +227,37 @@ class Streamer:
         if self.video_quality == "medium":
             return video_candidates[len(video_candidates) // 2]
         return video_candidates[0]
+
+    def _target_video_profile(self):
+        if self.video_quality:
+            return get_quality_profile(self.video_quality)
+        return self.profile
+
+    def _video_quality_cap(self, profile):
+        if not self.video_quality:
+            return None
+        for requirement in profile.video_requirements:
+            if requirement.min_height:
+                return requirement.min_height
+        return None
+
+    def _apply_quality_cap(self, candidates: List[dict], cap: Optional[int]) -> List[dict]:
+        if not cap:
+            return candidates
+        filtered: List[dict] = []
+        for candidate in candidates:
+            height = candidate.get("height")
+            if self._within_quality_cap(height, cap):
+                filtered.append(candidate)
+        return filtered
+
+    def _within_quality_cap(self, height, cap: int) -> bool:
+        if height is None:
+            return True
+        try:
+            return int(height) <= cap
+        except (TypeError, ValueError):
+            return True
 
     def _select_audio_candidate(self, formats: List[dict]) -> Optional[dict]:
         audio_candidates = [

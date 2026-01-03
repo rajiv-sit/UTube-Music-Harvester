@@ -36,6 +36,7 @@ def test_load_defaults_respects_legacy_audio_env(monkeypatch) -> None:
     monkeypatch.delenv("UTUBE_MEDIA_FORMAT", raising=False)
     monkeypatch.setenv("UTUBE_AUDIO_FORMAT", "aac")
     monkeypatch.setenv("UTUBE_SKIP_DOTENV", "1")
+    monkeypatch.delenv("UTUBE_VOICE_ENABLED", raising=False)
 
     reloaded = _reload_config()
     defaults = reloaded.load_defaults()
@@ -52,6 +53,7 @@ def test_load_defaults_falls_back_to_defaults(monkeypatch) -> None:
     monkeypatch.delenv("UTUBE_STREAM_FORMAT", raising=False)
     monkeypatch.delenv("UTUBE_REMOTE_COMPONENTS", raising=False)
     monkeypatch.setenv("UTUBE_SKIP_DOTENV", "1")
+    monkeypatch.delenv("UTUBE_VOICE_ENABLED", raising=False)
 
     reloaded = _reload_config()
     defaults = reloaded.load_defaults()
@@ -61,5 +63,5 @@ def test_load_defaults_falls_back_to_defaults(monkeypatch) -> None:
     assert defaults.remote_components == []
     assert defaults.quality_profile == DEFAULT_PROFILE_NAME
     assert defaults.voice_enabled is False
-    assert defaults.voice_engine == "offline_default"
+    assert defaults.voice_engine == "vosk_offline"
     assert defaults.voice_language == "en-US"

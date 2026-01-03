@@ -78,10 +78,15 @@ The Qt experience combines waveform, playback controls, and the dedicated media 
 
 ## Voice Control (Experimental)
 
-You can now trigger searches and playback using natural language inside the Qt GUI. Toggle the microphone button next to the filters to listen for a single command. Voice control is disabled by default—set `UTUBE_VOICE_ENABLED=1` and install `speech_recognition` if you want the offline Sphinx engine to work. Additional environment variables include:
+You can now trigger searches and playback using natural language inside the Qt GUI. Toggle the microphone button next to the filters to listen for a single command. Voice control is disabled by default—set `UTUBE_VOICE_ENABLED=1`, install the voice extras with `pip install '.[voice]'`, and point `UTUBE_VOICE_MODEL_PATH` at a downloaded model to run offline. Additional configuration knobs include:
 
-- `UTUBE_VOICE_ENGINE`: selects the engine (`offline_default` by default).
+- `UTUBE_VOICE_ENGINE`: selects the engine (`vosk_offline` by default; `offline_default` still works when `pocketsphinx` is installed).
+- `UTUBE_VOICE_MODELS_DIR`: the directory that holds the bundled Vosk models (defaults to `vosk-models/` inside the repo).
+- `UTUBE_VOICE_MODEL_NAME`: choose which model inside that directory to use (`vosk-model-small-en-us-0.15` by default).
+- `UTUBE_VOICE_MODEL_PATH`: point directly at the model you want (overrides the combination of models dir + name; relative paths are resolved from the project root, so `vosk-models/vosk-model-small-en-us-0.15` works).
 - `UTUBE_VOICE_LANGUAGE`: sets the recognition language (defaults to `en-US`).
+
+The repo ships with multiple models under `vosk-models/` (e.g., `vosk-model-small-en-us-0.15`, `vosk-model-en-us-0.22`, `vosk-model-en-us-0.22-lgraph`). The GUI uses `vosk-model-small-en-us-0.15` by default, but you can select any other folder from the model dropdown next to the mic button (the dropdown mirrors the contents of `vosk-models/`), or set `UTUBE_VOICE_MODEL_NAME`/`UTUBE_VOICE_MODEL_PATH` directly.
 
 Supported commands in v1:
 

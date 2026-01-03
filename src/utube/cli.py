@@ -67,9 +67,9 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser.add_argument("--js-runtime", default=defaults.js_runtime, help="Hint for yt-dlp JS runtime (node, deno, etc.).")
     parser.add_argument(
         "--remote-components",
-        action="extend",
+        action="append",
         nargs="+",
-        default=list(defaults.remote_components),
+        default=None,
         help="Enable yt-dlp remote components (e.g., ejs:github).",
     )
     parser.add_argument("--max-results", type=int, default=8, help="How many YouTube hits to evaluate.")
@@ -88,7 +88,22 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         default=defaults.quality_profile,
         help="Select a quality profile that drives audio/video selectors.",
     )
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    args.remote_components = _normalize_remote_components(
+        args.remote_components, defaults.remote_components
+    )
+    return args
+
+
+def _normalize_remote_components(
+    provided: Optional[List[List[str]]], defaults: List[str]
+) -> List[str]:
+    if not provided:
+        return list(defaults)
+    flattened: List[str] = []
+    for group in provided:
+        flattened.extend(group)
+    return flattened
 
 
 def _print_download_result(result: DownloadResult) -> None:
