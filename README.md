@@ -103,11 +103,11 @@ Voice lets you search/play hands-free when UTUBE_VOICE_ENABLED=1. Install the vo
 
 Supported commands include:
 
-1. Search triggers: “Search for trance”, “Search for rock songs”, “Find jazz music”, “Play some ambient”, “Look up Beatles songs”, “Search YouTube for classical music”.
-2. “Play all songs”, “Play all”, “Play everything”, “Start playing all”, “Play the whole list”.
-3. Title commands: “Play Shape of You”, “Play the song Shape of You”, “Play Blinding Lights”, “Play the track Rolling in the Deep”.
-4. Track numbers: “Play track number one”, “Play track number five”, “Play the third song”, “Play song number four”.
-5. Playback controls: “Pause”, “Resume”, “Continue”, “Stop”, “Next song”, “Previous song”.
+1. Search triggers: Search for trance, Search for rock songs, Find jazz music, Play some ambient, Look up Beatles songs, Search YouTube for classical music.
+2. Play all songs, Play all, Play everything, Start playing all, Play the whole list.
+3. Title commands: Play Shape of You, Play the song Shape of You, Play Blinding Lights, Play the track Rolling in the Deep.
+4. Track numbers: Play track number one, Play track number five, Play the third song, Play song number four.
+5. Playback controls: Pause, Resume, Continue, Stop, Next song, Previous song.
 
 Voice commands parse into VoiceCommand structures that drive the same GUI handlers as typed interactions; status messages show the last recognized phrase or any errors.
 
@@ -138,7 +138,8 @@ umpy are missing.
 - **Missing remote components**: set UTUBE_REMOTE_COMPONENTS=ejs:github or use --remote-components.
 - **ffmpeg not found**: add it to your PATH.
 - **Voice fails**: install voice extras (pip install '.[voice]'), ensure NumPy is available, and read the voice status label for specifics.
-- **Voice models missing**: download a model and place it inside osk-models/ or use the GUI dropdown.
+- **Voice models missing**: download a model and place it inside vosk-models/ or use the GUI dropdown.
+- **FFmpeg reports "Late SEI is not implemented"**: install the latest Git build from https://ffmpeg.org/download.html#build-windows; that warning means the stock release lacks that codec feature. Restart the CLI/GUI after updating so the new fmpeg binary on your PATH is used.
 
 ## Architecture & References
 
