@@ -86,6 +86,17 @@ Workflow:
 
 Worker threads keep the GUI responsive by offloading searches, downloads, and stream resolution.
 
+## GUI Snapshot
+
+The Qt experience centers around a sleek dashboard with filters on the left, results in the middle, and playback controls at the bottom. The figure below highlights the mic/model controls, waveform, and video canvas so you can quickly orient yourself when tuning filters or confirming voice commands.
+
+<figure>
+<img width="1919" height="1028" alt="UTube GUI layout" src="https://github.com/user-attachments/assets/fig-utube-gui.png" />
+<figcaption>Figure 4: Qt interface showing filters, results, and the playback/voice control area.</figcaption>
+</figure>
+
+
+
 ## Voice Control (Experimental)
 
 Voice lets you search/play hands-free when UTUBE_VOICE_ENABLED=1. Install the voice extras, download a Vosk model into osk-models/, and toggle the mic button near the filters. The GUI shows the current voice status and the dropdown lists every folder inside osk-models/.
