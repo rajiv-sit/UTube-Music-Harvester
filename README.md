@@ -91,11 +91,14 @@ Worker threads keep the GUI responsive by offloading searches, downloads, and st
 The Qt experience centers around a sleek dashboard with filters on the left, results in the middle, and playback controls at the bottom. The figure below highlights the mic/model controls, waveform, and video canvas so you can quickly orient yourself when tuning filters or confirming voice commands.
 
 <figure>
-<img width="1919" height="1028" alt="UTube GUI layout" src="https://github.com/user-attachments/assets/fig-utube-gui.png" />
-<figcaption>Figure 4: Qt interface showing filters, results, and the playback/voice control area.</figcaption>
+<img width="1911" height="1032" alt="image" src="https://github.com/user-attachments/assets/ef75c6c7-1931-421f-86c3-51ca24bef45b" />
+<figcaption>Figure 1: Qt interface showing filters, results, and the playback/voice control area.</figcaption>
 </figure>
 
-
+<figure>
+<img width="1915" height="1022" alt="image" src="https://github.com/user-attachments/assets/99ed88ff-dcb2-45c6-a50c-c2c2a0864636" />
+<figcaption>Figure 2: Qt interface showing audio and video play area.</figcaption>
+</figure>
 
 ## Voice Control (Experimental)
 
