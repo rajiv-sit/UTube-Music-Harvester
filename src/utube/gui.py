@@ -1076,8 +1076,9 @@ class UTubeGui(QMainWindow):
     def _start_search(self) -> None:
         genre = self.genre_input.text().strip()
         artist = self.artist_input.text().strip()
-        if not genre and not artist:
-            self._set_status("Enter a genre or artist before searching.")
+        keywords = self.keywords_input.text().strip()
+        if not genre and not artist and not keywords:
+            self._set_status("Enter a genre, artist, or keywords before searching.")
             return
         self.library_view.clear()
         self.tracks = []
