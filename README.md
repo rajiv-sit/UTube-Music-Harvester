@@ -139,7 +139,8 @@ umpy are missing.
 - **ffmpeg not found**: add it to your PATH.
 - **Voice fails**: install voice extras (pip install '.[voice]'), ensure NumPy is available, and read the voice status label for specifics.
 - **Voice models missing**: download a model and place it inside vosk-models/ or use the GUI dropdown.
-- **FFmpeg reports "Late SEI is not implemented"**: install the latest Git build from https://ffmpeg.org/download.html#build-windows; that warning means the stock release lacks that codec feature. Restart the CLI/GUI after updating so the new fmpeg binary on your PATH is used.
+- **FFmpeg reports "Late SEI is not implemented"**: install the latest Git build from https://ffmpeg.org/download.html#build-windows; that warning means the stock release lacks that codec feature. Restart the CLI/GUI after updating so the new `ffmpeg` binary on your PATH is used.
+- **Need a nightly Git build?** Use the releases at https://github.com/BtbN/FFmpeg-Builds/releases (grab the `ffmpeg-master-latest-win64-gpl-shared.zip`/`-full` archive). Extract it and ensure the included `bin\ffmpeg.exe` is on your PATH or referenced via `UTUBE_FFMPEG_PATH`.
 
 ## Architecture & References
 
