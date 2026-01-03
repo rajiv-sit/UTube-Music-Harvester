@@ -13,23 +13,23 @@ umpy) for offline voice control.
 
 ## Installation
 
-` ash
+ ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1   # use the right activation for your shell
 pip install -e .
-`
+```
 
 To add voice support:
 
-` ash
+ ```powershell
 pip install '.[voice]'
-`
+```
 
 ## Configuration
 
 Copy .env.example to .env and adjust any keys you care about. Common settings:
 
-`ini
+```powershell
 UTUBE_DOWNLOAD_DIR=~/Music/utube
 UTUBE_AUDIO_FORMAT=opus
 UTUBE_STREAM_FORMAT=bestaudio/best
@@ -41,7 +41,7 @@ UTUBE_VOICE_MODELS_DIR=vosk-models
 UTUBE_VOICE_MODEL_NAME=vosk-model-small-en-us-0.15
 UTUBE_VOICE_MODEL_PATH=vosk-models/vosk-model-small-en-us-0.15
 UTUBE_VOICE_LANGUAGE=en-US
-`
+```
 
 - Use UTUBE_MEDIA_FORMAT=mp4 when you require full video downloads.
 - Adjust UTUBE_VIDEO_QUALITY to high, medium, or data_saving (the shared quality profiles in src/utube/quality.py).
@@ -52,10 +52,10 @@ UTUBE_VOICE_LANGUAGE=en-US
 
 Sample usage:
 
-` ash
+```powershell
 utube trance --mode download --quality-profile high --max-results 40 --audio-format opus
 utube ambient --mode stream --quality-profile medium --safe-for-work
-`
+```
 
 Key CLI flags:
 
@@ -70,10 +70,10 @@ The CLI prints download summaries or stream URLs depending on the requested mode
 
 Launch the Qt interface via:
 
-` ash
+```powershell
 utube-gui
 # or python -m utube.gui to pick up the latest local code
-`
+```
 
 Workflow:
 
@@ -128,9 +128,9 @@ Both downloads and stream previews reference the same profile so the live experi
 
 ## Running Tests
 
-` ash
+```powershell
 python -m pytest
-`
+```
 
 Tests cover config defaults, CLI parsing, extractor filtering, storage/download integration, quality profiles, and voice parsing. Voice model tests skip when  osk/sounddevice/
 umpy are missing.
