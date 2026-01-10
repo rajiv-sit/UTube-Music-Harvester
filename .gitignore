@@ -1,6 +1,7 @@
 build/
 ffmpeg-master-latest-win64-gpl-shared/
 *.egg-info
+.coverage
 *.pyc
 __pycache__/
 src/utube/__pycache__/

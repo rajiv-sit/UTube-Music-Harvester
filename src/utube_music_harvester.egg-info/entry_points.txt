@@ -1,3 +1,0 @@
-[console_scripts]
-utube = utube.cli:cli_main
-utube-gui = utube.gui:run_gui
