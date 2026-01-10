@@ -91,12 +91,12 @@ Worker threads keep the GUI responsive by offloading searches, downloads, and st
 The Qt experience centers around a sleek dashboard with filters on the left, results in the middle, and playback controls at the bottom. The figure below highlights the mic/model controls, waveform, and video canvas so you can quickly orient yourself when tuning filters or confirming voice commands.
 
 <figure>
-<img width="1911" height="1032" alt="image" src="https://github.com/user-attachments/assets/ef75c6c7-1931-421f-86c3-51ca24bef45b" />
+<img width="1815" height="760" alt="image" src="https://github.com/user-attachments/assets/9b21d4d4-4476-473d-bd0c-cc152e7df273" />
 <figcaption>Figure 1: Qt interface showing filters, results, and the playback/voice control area.</figcaption>
 </figure>
 
 <figure>
-<img width="1915" height="1022" alt="image" src="https://github.com/user-attachments/assets/99ed88ff-dcb2-45c6-a50c-c2c2a0864636" />
+<img width="1912" height="1026" alt="image" src="https://github.com/user-attachments/assets/42ddcd00-526e-49ed-9aac-baa3c418f4a9" />
 <figcaption>Figure 2: Qt interface showing audio and video play area.</figcaption>
 </figure>
 
