@@ -40,6 +40,12 @@ class StreamingLink:
     track: TrackMetadata
     stream_url: str
     format_id: str
+    ext: Optional[str] = None
+    abr: Optional[float] = None
+    height: Optional[int] = None
+    vcodec: Optional[str] = None
+    acodec: Optional[str] = None
+    format_note: Optional[str] = None
 
 
 class DownloadManager:
@@ -162,6 +168,12 @@ class Streamer:
                             track=track,
                             stream_url=stream.get("url"),
                             format_id=stream.get("format_id", "unknown"),
+                            ext=stream.get("ext"),
+                            abr=stream.get("abr"),
+                            height=stream.get("height"),
+                            vcodec=stream.get("vcodec"),
+                            acodec=stream.get("acodec"),
+                            format_note=stream.get("format_note"),
                         )
                     )
         return links

@@ -71,8 +71,8 @@ The CLI prints download summaries or stream URLs depending on the requested mode
 Launch the Qt interface via:
 
 ```powershell
-utube-gui
-# or python -m utube.gui to pick up the latest local code
+.\.venv\Scripts\python -m utube.gui
+# or .\.venv\Scripts\utube-gui
 ```
 
 Workflow:
@@ -129,7 +129,7 @@ Both downloads and stream previews reference the same profile so the live experi
 ## Running Tests
 
 ```powershell
-python -m pytest
+.\.venv\Scripts\python -m pytest
 ```
 
 Tests cover config defaults, CLI parsing, extractor filtering, storage/download integration, quality profiles, and voice parsing. Voice model tests skip when  osk/sounddevice/

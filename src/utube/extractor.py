@@ -52,6 +52,9 @@ class TrackMetadata:
     description: Optional[str]
     tags: List[str]
     file_type: str
+    like_count: Optional[int] = None
+    audio_bitrate: Optional[float] = None
+    resolution_height: Optional[int] = None
 
 
 def search_tracks(
@@ -193,6 +196,7 @@ def _entry_to_metadata(entry: dict) -> TrackMetadata:
         uploader=entry.get("uploader") or entry.get("channel") or "unknown",
         duration_seconds=entry.get("duration"),
         view_count=entry.get("view_count"),
+        like_count=entry.get("like_count"),
         upload_date=entry.get("upload_date"),
         webpage_url=entry.get("webpage_url") or entry.get("url") or "",
         channel_url=entry.get("uploader_url"),
@@ -200,6 +204,8 @@ def _entry_to_metadata(entry: dict) -> TrackMetadata:
         description=entry.get("description"),
         tags=list(entry.get("tags") or []),
         file_type=_infer_file_type(entry),
+        audio_bitrate=entry.get("abr"),
+        resolution_height=entry.get("height"),
     )
 
 
