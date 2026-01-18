@@ -29,7 +29,14 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg libegl1 libgl1
+          sudo apt-get install -y ffmpeg libegl1 libgl1 unzip
+      - name: Download Vosk voice model
+        run: |
+          mkdir -p vosk-models
+          if [ ! -d vosk-models/vosk-model-small-en-us-0.15 ]; then
+            curl -sSL https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip -o /tmp/vosk-model-small-en-us-0.15.zip
+            unzip -q /tmp/vosk-model-small-en-us-0.15.zip -d vosk-models
+          fi
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip setuptools
