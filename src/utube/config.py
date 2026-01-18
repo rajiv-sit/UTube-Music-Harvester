@@ -112,7 +112,9 @@ def load_defaults() -> CliDefaults:
     voice_model_path = _env_path("UTUBE_VOICE_MODEL_PATH", models_dir / model_name)
     return CliDefaults(
         download_dir=_env_path("UTUBE_DOWNLOAD_DIR", Path.cwd() / "downloads"),
-        audio_format=os.getenv("UTUBE_MEDIA_FORMAT", os.getenv("UTUBE_AUDIO_FORMAT", "mp3")),
+        audio_format=os.getenv(
+            "UTUBE_MEDIA_FORMAT", os.getenv("UTUBE_AUDIO_FORMAT", "mp3")
+        ),
         stream_format=os.getenv("UTUBE_STREAM_FORMAT", "bestaudio/best"),
         js_runtime=env_runtime or _detect_js_runtime(),
         remote_components=_env_list("UTUBE_REMOTE_COMPONENTS"),

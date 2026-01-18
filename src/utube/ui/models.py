@@ -76,9 +76,13 @@ class TrackTableModel(QAbstractTableModel):
                 case 6:
                     return track.upload_date or "N/A"
                 case 7:
-                    return self._file_type_label(self._normalize_file_type(track.file_type))
+                    return self._file_type_label(
+                        self._normalize_file_type(track.file_type)
+                    )
                 case 8:
-                    return self._format_format(self._normalize_file_type(track.file_type))
+                    return self._format_format(
+                        self._normalize_file_type(track.file_type)
+                    )
                 case 9:
                     return self._format_bitrate(track.audio_bitrate)
                 case 10:
@@ -88,9 +92,15 @@ class TrackTableModel(QAbstractTableModel):
         return None
 
     def headerData(
-        self, section: int, orientation: Qt.Orientation, role: int = Qt.ItemDataRole.DisplayRole
+        self,
+        section: int,
+        orientation: Qt.Orientation,
+        role: int = Qt.ItemDataRole.DisplayRole,
     ):
-        if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
+        if (
+            role == Qt.ItemDataRole.DisplayRole
+            and orientation == Qt.Orientation.Horizontal
+        ):
             return self.HEADERS[section]
         return None
 
@@ -127,7 +137,9 @@ class TrackTableModel(QAbstractTableModel):
         if len(description) > 240:
             description = f"{description[:240]}..."
         tags = " ".join(track.tags[:10]) if track.tags else ""
-        blob = " ".join(filter(None, (track.title, track.uploader, description, tags))).lower()
+        blob = " ".join(
+            filter(None, (track.title, track.uploader, description, tags))
+        ).lower()
         self._search_cache[key] = blob
         return blob
 

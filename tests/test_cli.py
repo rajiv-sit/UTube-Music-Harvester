@@ -41,7 +41,13 @@ def test_parse_args_includes_js_runtime() -> None:
 
 def test_parse_args_collector_remote_components() -> None:
     args = cli.parse_args(
-        ["ambient", "--remote-components", "ejs:github", "--remote-components", "node:./bin/node"]
+        [
+            "ambient",
+            "--remote-components",
+            "ejs:github",
+            "--remote-components",
+            "node:./bin/node",
+        ]
     )
     assert args.remote_components == ["ejs:github", "node:./bin/node"]
 

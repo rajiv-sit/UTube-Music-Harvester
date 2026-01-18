@@ -16,9 +16,15 @@ def test_vosk_models_exist(defaults):
     assert models_dir.exists(), f"{models_dir} should exist"
     model_dirs = [child for child in models_dir.iterdir() if child.is_dir()]
     assert model_dirs, "No Vosk models found in the models directory"
-    expected = {"vosk-model-small-en-us-0.15", "vosk-model-en-us-0.22", "vosk-model-en-us-0.22-lgraph"}
+    expected = {
+        "vosk-model-small-en-us-0.15",
+        "vosk-model-en-us-0.22",
+        "vosk-model-en-us-0.22-lgraph",
+    }
     available = {child.name for child in model_dirs}
-    assert expected.issubset(available), f"Expected models {expected} to exist inside {models_dir}"
+    assert expected.issubset(
+        available
+    ), f"Expected models {expected} to exist inside {models_dir}"
 
 
 def test_voice_controller_builds_for_each_model(defaults):

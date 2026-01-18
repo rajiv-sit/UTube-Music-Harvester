@@ -57,6 +57,8 @@ def test_search_tracks_honors_js_runtime(monkeypatch) -> None:
             return {"entries": []}
 
     monkeypatch.setattr("yt_dlp.YoutubeDL", DummyYTDL)
-    search_tracks("ambient", js_runtime="node", remote_components=["ejs:github"], max_results=1)
+    search_tracks(
+        "ambient", js_runtime="node", remote_components=["ejs:github"], max_results=1
+    )
     assert captured["opts"]["js_runtime"] == "node"
     assert captured["opts"]["remote_components"] == ["ejs:github"]

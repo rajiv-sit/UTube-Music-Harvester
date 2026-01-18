@@ -3,7 +3,13 @@
 from .config import CliDefaults, load_defaults
 from .controller import DownloadResult, MediaRequest, StreamResult, fulfill_request
 from .extractor import SearchFilters, TrackMetadata, search_tracks
-from .storage import DownloadManager, StreamingLink, Streamer, build_track_filename, sanitize_filename
+from .storage import (
+    DownloadManager,
+    StreamingLink,
+    Streamer,
+    build_track_filename,
+    sanitize_filename,
+)
 from .voice import VoiceCommand, VoiceCommandType, VoiceController
 
 __all__ = [

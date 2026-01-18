@@ -8,7 +8,9 @@ from utube.extractor import SearchFilters, TrackMetadata
 
 def test_matches_filters_duration_and_views():
     entry = {"duration": 300, "view_count": 1000}
-    filters = SearchFilters(min_duration=200, max_duration=400, min_views=500, max_views=2000)
+    filters = SearchFilters(
+        min_duration=200, max_duration=400, min_views=500, max_views=2000
+    )
     assert extractor._matches_filters(entry, filters) is True
 
     filters = SearchFilters(min_duration=400)
@@ -20,7 +22,9 @@ def test_matches_filters_duration_and_views():
 
 def test_matches_filters_dates_and_live_safe():
     entry = {"upload_date": "20240115", "is_live": True, "age_limit": 18}
-    filters = SearchFilters(upload_after=datetime.date(2024, 1, 1), require_non_live=True)
+    filters = SearchFilters(
+        upload_after=datetime.date(2024, 1, 1), require_non_live=True
+    )
     assert extractor._matches_filters(entry, filters) is False
 
     entry["is_live"] = False
@@ -56,7 +60,9 @@ def test_select_thumbnail():
 
 def test_unwrap_entries():
     assert list(extractor._unwrap_entries(None)) == []
-    assert list(extractor._unwrap_entries({"entries": ["bad", {"id": "1"}]})) == [{"id": "1"}]
+    assert list(extractor._unwrap_entries({"entries": ["bad", {"id": "1"}]})) == [
+        {"id": "1"}
+    ]
 
 
 def test_normalize_file_type():
@@ -127,9 +133,27 @@ def test_js_runtime_entry_resolution(monkeypatch, tmp_path):
 def test_search_tracks_filters_and_progress(monkeypatch):
     calls = []
     entries = [
-        {"id": "1", "title": "One", "duration": 60, "view_count": 100, "webpage_url": "url1"},
-        {"id": "1", "title": "Dup", "duration": 60, "view_count": 100, "webpage_url": "url1"},
-        {"id": "2", "title": "Two", "duration": 500, "view_count": 100, "webpage_url": "url2"},
+        {
+            "id": "1",
+            "title": "One",
+            "duration": 60,
+            "view_count": 100,
+            "webpage_url": "url1",
+        },
+        {
+            "id": "1",
+            "title": "Dup",
+            "duration": 60,
+            "view_count": 100,
+            "webpage_url": "url1",
+        },
+        {
+            "id": "2",
+            "title": "Two",
+            "duration": 500,
+            "view_count": 100,
+            "webpage_url": "url2",
+        },
     ]
 
     class DummyYTDL:
@@ -164,7 +188,13 @@ def test_search_tracks_filters_and_progress(monkeypatch):
 
 def test_search_tracks_keywords_and_short_chunk(monkeypatch):
     entries = [
-        {"id": "1", "title": "One", "duration": 60, "view_count": 100, "webpage_url": "url1"},
+        {
+            "id": "1",
+            "title": "One",
+            "duration": 60,
+            "view_count": 100,
+            "webpage_url": "url1",
+        },
     ]
 
     class DummyYTDL:
@@ -186,5 +216,7 @@ def test_search_tracks_keywords_and_short_chunk(monkeypatch):
 
 
 def test_extension_from_url_exception(monkeypatch):
-    monkeypatch.setattr(extractor, "urlparse", lambda _url: (_ for _ in ()).throw(ValueError()))
+    monkeypatch.setattr(
+        extractor, "urlparse", lambda _url: (_ for _ in ()).throw(ValueError())
+    )
     assert extractor._extension_from_url("http://example") is None

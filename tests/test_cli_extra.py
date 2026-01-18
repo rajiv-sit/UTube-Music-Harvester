@@ -2,7 +2,13 @@ import asyncio
 import pytest
 
 from utube import DownloadResult, StreamResult, TrackMetadata
-from utube.cli import _parse_date, _print_download_result, _print_stream_result, cli_main, main
+from utube.cli import (
+    _parse_date,
+    _print_download_result,
+    _print_stream_result,
+    cli_main,
+    main,
+)
 from utube.storage import StreamingLink
 
 

@@ -1,4 +1,8 @@
-from utube.quality import build_audio_selector, build_video_audio_selector, get_quality_profile
+from utube.quality import (
+    build_audio_selector,
+    build_video_audio_selector,
+    get_quality_profile,
+)
 
 
 def test_build_audio_selector_prioritizes_high_bitrate() -> None:

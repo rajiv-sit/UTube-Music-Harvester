@@ -100,7 +100,9 @@ QUALITY_PROFILES = tuple(QUALITY_PROFILE_MAP.keys())
 def get_quality_profile(name: Optional[str]) -> QualityProfile:
     if not name:
         name = DEFAULT_PROFILE_NAME
-    return QUALITY_PROFILE_MAP.get(name.lower(), QUALITY_PROFILE_MAP[DEFAULT_PROFILE_NAME])
+    return QUALITY_PROFILE_MAP.get(
+        name.lower(), QUALITY_PROFILE_MAP[DEFAULT_PROFILE_NAME]
+    )
 
 
 def build_audio_selector(profile: QualityProfile) -> str:

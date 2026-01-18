@@ -17,7 +17,9 @@ def qapp():
     return app
 
 
-def _track(*, title: str, file_type: str, description: str = "", tags=None) -> TrackMetadata:
+def _track(
+    *, title: str, file_type: str, description: str = "", tags=None
+) -> TrackMetadata:
     return TrackMetadata(
         video_id=title.lower().replace(" ", "_"),
         title=title,
@@ -84,9 +86,10 @@ def test_preferred_format_and_should_prefer_video(qapp):
 
 def test_cleanup_temp_files_removes_unpreserved():
     gui = UTubeGui.__new__(UTubeGui)
-    with tempfile.NamedTemporaryFile(delete=False) as tmp_a, tempfile.NamedTemporaryFile(
-        delete=False
-    ) as tmp_b:
+    with (
+        tempfile.NamedTemporaryFile(delete=False) as tmp_a,
+        tempfile.NamedTemporaryFile(delete=False) as tmp_b,
+    ):
         gui._temp_media_files = {tmp_a.name, tmp_b.name}
         gui._cleanup_temp_files(preserve=tmp_b.name)
         assert tmp_b.name in gui._temp_media_files
@@ -111,13 +114,24 @@ def test_cap_temp_cache_removes_overflow(tmp_path):
 def test_stream_selector_and_details(qapp):
     gui = UTubeGui.__new__(UTubeGui)
     gui.defaults = type("Defaults", (), {"stream_format": "bestaudio/best"})()
-    selector = gui._build_stream_selector(prefer_video=False, stream_format="", preferred_format=None)
+    selector = gui._build_stream_selector(
+        prefer_video=False, stream_format="", preferred_format=None
+    )
     assert "bestaudio" in selector
-    selector_video = gui._build_stream_selector(prefer_video=True, stream_format="", preferred_format="mp4")
+    selector_video = gui._build_stream_selector(
+        prefer_video=True, stream_format="", preferred_format="mp4"
+    )
     assert "mp4" in selector_video
 
     track = _track(title="Audio", file_type="mp3")
-    link = StreamingLink(track=track, stream_url="http://example", format_id="best", ext="mp3", abr=128, height=0)
+    link = StreamingLink(
+        track=track,
+        stream_url="http://example",
+        format_id="best",
+        ext="mp3",
+        abr=128,
+        height=0,
+    )
     details = gui._format_stream_details(link)
     assert "MP3" in details
 
@@ -137,7 +151,10 @@ def test_preflight_checks(monkeypatch):
     assert gui._check_js_runtime() is False
 
     gui._current_js_runtime = lambda: ""
-    monkeypatch.setattr("utube.gui.socket.create_connection", lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError()))
+    monkeypatch.setattr(
+        "utube.gui.socket.create_connection",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError()),
+    )
     assert gui._check_network() is False
 
 

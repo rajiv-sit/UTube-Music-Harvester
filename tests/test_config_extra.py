@@ -29,7 +29,9 @@ def test_guess_user_root_falls_back(monkeypatch, tmp_path: Path):
 
 
 def test_detect_js_runtime(monkeypatch):
-    monkeypatch.setattr(config.shutil, "which", lambda name: "/bin/node" if name == "node" else None)
+    monkeypatch.setattr(
+        config.shutil, "which", lambda name: "/bin/node" if name == "node" else None
+    )
     assert config._detect_js_runtime() == "node"
     monkeypatch.setattr(config.shutil, "which", lambda name: None)
     assert config._detect_js_runtime() is None

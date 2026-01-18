@@ -65,7 +65,9 @@ def test_search_service_progress(monkeypatch):
 
 def test_playback_service_resolves_first_link(monkeypatch):
     track = _track()
-    expected = StreamingLink(track=track, stream_url="http://example.com", format_id="best")
+    expected = StreamingLink(
+        track=track, stream_url="http://example.com", format_id="best"
+    )
 
     class FakeStreamer:
         def __init__(self, **kwargs):

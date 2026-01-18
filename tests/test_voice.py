@@ -27,7 +27,9 @@ def test_voice_search_command(parser: VoiceParser) -> None:
         ("Search YouTube for classical music", "classical music"),
     ],
 )
-def test_voice_search_variations(parser: VoiceParser, phrase: str, expected: str) -> None:
+def test_voice_search_variations(
+    parser: VoiceParser, phrase: str, expected: str
+) -> None:
     command = parser.parse(phrase)
     assert command.command_type == VoiceCommandType.SEARCH
     assert command.query == expected
@@ -35,7 +37,13 @@ def test_voice_search_variations(parser: VoiceParser, phrase: str, expected: str
 
 @pytest.mark.parametrize(
     "phrase",
-    ["Play all songs", "Play all", "Play everything", "Start playing all", "Play the whole list"],
+    [
+        "Play all songs",
+        "Play all",
+        "Play everything",
+        "Start playing all",
+        "Play the whole list",
+    ],
 )
 def test_voice_play_all_variations(parser: VoiceParser, phrase: str) -> None:
     command = parser.parse(phrase)
@@ -51,7 +59,9 @@ def test_voice_play_all_variations(parser: VoiceParser, phrase: str) -> None:
         ("Play song number four", 3),
     ],
 )
-def test_voice_play_by_index(parser: VoiceParser, phrase: str, expected_index: int) -> None:
+def test_voice_play_by_index(
+    parser: VoiceParser, phrase: str, expected_index: int
+) -> None:
     command = parser.parse(phrase)
     assert command.command_type == VoiceCommandType.PLAY_SPECIFIC
     assert command.index == expected_index
@@ -70,6 +80,8 @@ def test_voice_play_by_title(parser: VoiceParser, phrase: str, expected: str) ->
     command = parser.parse(phrase)
     assert command.command_type == VoiceCommandType.PLAY_SPECIFIC
     assert command.query == expected
+
+
 @pytest.mark.parametrize(
     ("phrase", "expected"),
     [
@@ -81,7 +93,9 @@ def test_voice_play_by_title(parser: VoiceParser, phrase: str, expected: str) ->
         ("Stop", "stop"),
     ],
 )
-def test_voice_control_variations(parser: VoiceParser, phrase: str, expected: str) -> None:
+def test_voice_control_variations(
+    parser: VoiceParser, phrase: str, expected: str
+) -> None:
     command = parser.parse(phrase)
     assert command.command_type == VoiceCommandType.CONTROL
     assert command.action == expected

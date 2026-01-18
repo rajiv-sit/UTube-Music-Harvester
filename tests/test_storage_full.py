@@ -36,8 +36,20 @@ def test_js_runtime_entry_absolute(tmp_path: Path):
 def test_streamer_select_format_preferred():
     streamer = Streamer(prefer_video=False, preferred_format="mp4")
     formats = [
-        {"ext": "mp4", "vcodec": "avc1", "acodec": "aac", "format_id": "v1", "url": "u1"},
-        {"ext": "m4a", "vcodec": "none", "acodec": "aac", "format_id": "a1", "url": "u2"},
+        {
+            "ext": "mp4",
+            "vcodec": "avc1",
+            "acodec": "aac",
+            "format_id": "v1",
+            "url": "u1",
+        },
+        {
+            "ext": "m4a",
+            "vcodec": "none",
+            "acodec": "aac",
+            "format_id": "a1",
+            "url": "u2",
+        },
     ]
     info = {"formats": formats}
     selected = streamer._select_format(info)
@@ -58,8 +70,24 @@ def test_streamer_select_format_audio():
 def test_streamer_select_video_candidate_with_cap():
     streamer = Streamer(prefer_video=True, video_quality="medium")
     formats = [
-        {"ext": "mp4", "vcodec": "avc1", "acodec": "aac", "format_id": "v1", "url": "u1", "height": 1080, "fps": 60},
-        {"ext": "mp4", "vcodec": "avc1", "acodec": "aac", "format_id": "v2", "url": "u2", "height": 720, "fps": 30},
+        {
+            "ext": "mp4",
+            "vcodec": "avc1",
+            "acodec": "aac",
+            "format_id": "v1",
+            "url": "u1",
+            "height": 1080,
+            "fps": 60,
+        },
+        {
+            "ext": "mp4",
+            "vcodec": "avc1",
+            "acodec": "aac",
+            "format_id": "v2",
+            "url": "u2",
+            "height": 720,
+            "fps": 30,
+        },
     ]
     info = {"formats": formats}
     selected = streamer._select_format(info)
@@ -127,7 +155,12 @@ def test_download_manager_download_invokes_ytdlp(tmp_path: Path, monkeypatch):
             captured["urls"] = urls
 
     monkeypatch.setattr(storage, "yt_dlp", type("Y", (), {"YoutubeDL": DummyYTDL}))
-    manager = DownloadManager(tmp_path, audio_format="mp3", js_runtime="node", remote_components=["ejs:github"])
+    manager = DownloadManager(
+        tmp_path,
+        audio_format="mp3",
+        js_runtime="node",
+        remote_components=["ejs:github"],
+    )
     manager._download("http://example.com", tmp_path / "file.mp3")
     assert "format" in captured["opts"]
     assert captured["urls"] == ["http://example.com"]
@@ -159,7 +192,9 @@ def test_streamer_stream_links_with_js_runtime(monkeypatch):
             return {"formats": []}
 
     monkeypatch.setattr(storage, "yt_dlp", type("Y", (), {"YoutubeDL": DummyYTDL}))
-    monkeypatch.setattr(storage, "_js_runtime_entry", lambda _name: {"name": "node", "path": "node"})
+    monkeypatch.setattr(
+        storage, "_js_runtime_entry", lambda _name: {"name": "node", "path": "node"}
+    )
     streamer = Streamer(js_runtime="node", remote_components=["ejs:github"])
     links = streamer.stream_links([track])
     assert links == []

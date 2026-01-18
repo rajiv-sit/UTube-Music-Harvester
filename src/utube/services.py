@@ -51,7 +51,9 @@ class SearchService:
             counter["idx"] += 1
             if progress_callback:
                 progress_callback(
-                    SearchProgress(track=track, index=counter["idx"], total_estimate=max_results)
+                    SearchProgress(
+                        track=track, index=counter["idx"], total_estimate=max_results
+                    )
                 )
 
         return search_tracks(

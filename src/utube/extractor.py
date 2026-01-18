@@ -160,15 +160,25 @@ def _unwrap_entries(raw_result: dict) -> Iterable[dict]:
 
 def _matches_filters(entry: dict, filters: SearchFilters) -> bool:
     duration = entry.get("duration")
-    if filters.min_duration is not None and (duration is None or duration < filters.min_duration):
+    if filters.min_duration is not None and (
+        duration is None or duration < filters.min_duration
+    ):
         return False
-    if filters.max_duration is not None and duration is not None and duration > filters.max_duration:
+    if (
+        filters.max_duration is not None
+        and duration is not None
+        and duration > filters.max_duration
+    ):
         return False
 
     views = entry.get("view_count")
     if filters.min_views is not None and (views is None or views < filters.min_views):
         return False
-    if filters.max_views is not None and views is not None and views > filters.max_views:
+    if (
+        filters.max_views is not None
+        and views is not None
+        and views > filters.max_views
+    ):
         return False
 
     upload_date = entry.get("upload_date")

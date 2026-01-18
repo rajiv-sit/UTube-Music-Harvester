@@ -62,7 +62,9 @@ def test_library_context_menu_actions(qapp, monkeypatch):
     view.playRequested.connect(lambda t: fired.append(("play", t.video_id)))
     view.playNextRequested.connect(lambda t: fired.append(("next", t.video_id)))
     view.queueRequested.connect(lambda t: fired.append(("queue", t.video_id)))
-    view.downloadRequested.connect(lambda ts: fired.append(("download", ts[0].video_id)))
+    view.downloadRequested.connect(
+        lambda ts: fired.append(("download", ts[0].video_id))
+    )
     view.copyTitleRequested.connect(lambda t: fired.append(("title", t.video_id)))
     view.copyUrlRequested.connect(lambda t: fired.append(("url", t.video_id)))
 
@@ -76,7 +78,14 @@ def test_library_context_menu_actions(qapp, monkeypatch):
         monkeypatch.setattr(QMenu, "exec", fake_exec)
         view._show_context_menu(QPoint(1, 1))
 
-    for label in ["Play", "Play Next", "Add to Queue", "Download", "Copy Title", "Copy URL"]:
+    for label in [
+        "Play",
+        "Play Next",
+        "Add to Queue",
+        "Download",
+        "Copy Title",
+        "Copy URL",
+    ]:
         run_action(label)
     assert ("play", track.video_id) in fired
     assert ("next", track.video_id) in fired

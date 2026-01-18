@@ -20,7 +20,9 @@ def test_vosk_engine_requires_model(tmp_path: Path, monkeypatch):
 
 def test_voice_controller_listen_once(monkeypatch):
     class FakeEngine(voice.SpeechEngine):
-        def recognize_once(self, *, language: str, timeout: float, phrase_time_limit: float) -> str:
+        def recognize_once(
+            self, *, language: str, timeout: float, phrase_time_limit: float
+        ) -> str:
             return "Play all"
 
     controller = voice.VoiceController.__new__(voice.VoiceController)
@@ -68,7 +70,15 @@ def test_voice_parser_empty_phrase():
 
 def test_voice_controller_build_engine_variants(monkeypatch, tmp_path):
     controller = voice.VoiceController.__new__(voice.VoiceController)
-    monkeypatch.setattr(voice, "sr", type("SR", (), {"Recognizer": lambda *_: object(), "Microphone": lambda *_: object()}))
+    monkeypatch.setattr(
+        voice,
+        "sr",
+        type(
+            "SR",
+            (),
+            {"Recognizer": lambda *_: object(), "Microphone": lambda *_: object()},
+        ),
+    )
     engine = controller._build_engine("offline_default", None)
     assert isinstance(engine, voice.OfflineSpeechEngine)
 
@@ -112,7 +122,11 @@ def test_vosk_engine_flow(monkeypatch, tmp_path):
         def rec(*args, **kwargs):
             return FakeAudio()
 
-    monkeypatch.setattr(voice, "vosk", type("V", (), {"Model": FakeModel, "KaldiRecognizer": FakeRecognizer}))
+    monkeypatch.setattr(
+        voice,
+        "vosk",
+        type("V", (), {"Model": FakeModel, "KaldiRecognizer": FakeRecognizer}),
+    )
     monkeypatch.setattr(voice, "sd", FakeSD)
     model_path = tmp_path / "model"
     model_path.mkdir()

@@ -47,8 +47,15 @@ def _build_filters(args: argparse.Namespace) -> Optional[SearchFilters]:
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     defaults = load_defaults()
-    parser = argparse.ArgumentParser(description="Fetch genre-aware tracks from YouTube")
-    parser.add_argument("genre", nargs="?", default=None, help="Genre or mood to search for (optional when --artist is set).")
+    parser = argparse.ArgumentParser(
+        description="Fetch genre-aware tracks from YouTube"
+    )
+    parser.add_argument(
+        "genre",
+        nargs="?",
+        default=None,
+        help="Genre or mood to search for (optional when --artist is set).",
+    )
     parser.add_argument("--artist", help="Specify an artist name to bias the search.")
     parser.add_argument(
         "--mode",
@@ -56,15 +63,30 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         default="download",
         help="Whether to download files or just gather stream URLs.",
     )
-    parser.add_argument("--download-dir", type=Path, default=defaults.download_dir, help="Where to store downloads.")
+    parser.add_argument(
+        "--download-dir",
+        type=Path,
+        default=defaults.download_dir,
+        help="Where to store downloads.",
+    )
     parser.add_argument(
         "--audio-format",
         default=defaults.audio_format,
         help="Target output format (mp3 for audio, mp4 for video) for downloads.",
     )
-    parser.add_argument("--bitrate", default="192", help="Target bitrate (kbps) for downloads.")
-    parser.add_argument("--stream-format", default=defaults.stream_format, help="Format selector when gathering streams.")
-    parser.add_argument("--js-runtime", default=defaults.js_runtime, help="Hint for yt-dlp JS runtime (node, deno, etc.).")
+    parser.add_argument(
+        "--bitrate", default="192", help="Target bitrate (kbps) for downloads."
+    )
+    parser.add_argument(
+        "--stream-format",
+        default=defaults.stream_format,
+        help="Format selector when gathering streams.",
+    )
+    parser.add_argument(
+        "--js-runtime",
+        default=defaults.js_runtime,
+        help="Hint for yt-dlp JS runtime (node, deno, etc.).",
+    )
     parser.add_argument(
         "--remote-components",
         action="append",
@@ -72,16 +94,37 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         default=None,
         help="Enable yt-dlp remote components (e.g., ejs:github).",
     )
-    parser.add_argument("--max-results", type=int, default=8, help="How many YouTube hits to evaluate.")
-    parser.add_argument("--order", choices=("relevance", "date", "longest", "shortest"), default="relevance", help="Search ordering strategy.")
-    parser.add_argument("--min-duration", type=int, help="Minimum duration (seconds) to keep.")
-    parser.add_argument("--max-duration", type=int, help="Maximum duration (seconds) to allow.")
+    parser.add_argument(
+        "--max-results", type=int, default=8, help="How many YouTube hits to evaluate."
+    )
+    parser.add_argument(
+        "--order",
+        choices=("relevance", "date", "longest", "shortest"),
+        default="relevance",
+        help="Search ordering strategy.",
+    )
+    parser.add_argument(
+        "--min-duration", type=int, help="Minimum duration (seconds) to keep."
+    )
+    parser.add_argument(
+        "--max-duration", type=int, help="Maximum duration (seconds) to allow."
+    )
     parser.add_argument("--min-views", type=int, help="Minimum view count filter.")
     parser.add_argument("--max-views", type=int, help="Maximum view count filter.")
-    parser.add_argument("--upload-after", type=_parse_date, help="Earliest upload date (YYYY-MM-DD).")
-    parser.add_argument("--upload-before", type=_parse_date, help="Latest upload date (YYYY-MM-DD).")
-    parser.add_argument("--safe-for-work", action="store_true", help="Prefer non-age restricted content.")
-    parser.add_argument("--keywords", help="Extra keywords to append to the genre term.")
+    parser.add_argument(
+        "--upload-after", type=_parse_date, help="Earliest upload date (YYYY-MM-DD)."
+    )
+    parser.add_argument(
+        "--upload-before", type=_parse_date, help="Latest upload date (YYYY-MM-DD)."
+    )
+    parser.add_argument(
+        "--safe-for-work",
+        action="store_true",
+        help="Prefer non-age restricted content.",
+    )
+    parser.add_argument(
+        "--keywords", help="Extra keywords to append to the genre term."
+    )
     parser.add_argument(
         "--quality-profile",
         choices=QUALITY_PROFILE_MAP.keys(),
@@ -116,8 +159,12 @@ def _print_download_result(result: DownloadResult) -> None:
 def _print_stream_result(result: StreamResult) -> None:
     print("Stream URLs collected:")
     for link in result.links:
-        print(f"  - {link.track.title or link.track.video_id}: {link.stream_url} [{link.format_id}]")
-    print(f"Collected {len(result.links)} stream endpoints from {len(result.metadata)} candidates.")
+        print(
+            f"  - {link.track.title or link.track.video_id}: {link.stream_url} [{link.format_id}]"
+        )
+    print(
+        f"Collected {len(result.links)} stream endpoints from {len(result.metadata)} candidates."
+    )
 
 
 async def main(argv: Optional[List[str]] = None) -> None:

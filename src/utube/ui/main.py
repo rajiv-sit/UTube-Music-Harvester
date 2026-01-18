@@ -79,6 +79,7 @@ SEARCH_CHUNK_SIZE = 20
 MAX_FALLBACK_BYTES = 200 * 1024 * 1024
 MAX_TEMP_FILES = 6
 
+
 class UTubeGui(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -124,7 +125,9 @@ class UTubeGui(QMainWindow):
         self.last_search_summary_label = QLabel("No search yet")
         self.library_view.songActivated.connect(self._handle_song_activation)
         self.library_view.playRequested.connect(self._handle_song_activation)
-        self.library_view.playNextRequested.connect(lambda track: self._enqueue_track(track, next_up=True))
+        self.library_view.playNextRequested.connect(
+            lambda track: self._enqueue_track(track, next_up=True)
+        )
         self.library_view.queueRequested.connect(self._enqueue_track)
         self.library_view.downloadRequested.connect(self._download_tracks_from_menu)
         self.library_view.copyTitleRequested.connect(self._copy_track_title)
@@ -133,8 +136,12 @@ class UTubeGui(QMainWindow):
         self.player_controller.stateChanged.connect(self._on_player_state_updated)
         self.player_controller.errorOccurred.connect(self._handle_player_error)
         self.player_controller.mediaStatusChanged.connect(self._on_media_status_changed)
-        self.player_controller.positionChanged.connect(self._update_now_playing_progress)
-        self.player_controller.durationChanged.connect(self._update_now_playing_duration)
+        self.player_controller.positionChanged.connect(
+            self._update_now_playing_progress
+        )
+        self.player_controller.durationChanged.connect(
+            self._update_now_playing_duration
+        )
         self.library_view.model.thumbnailRequested.connect(self._on_thumbnail_requested)
         self._play_attempts: Dict[str, int] = {}
         self._temp_media_files: set[str] = set()
@@ -156,7 +163,9 @@ class UTubeGui(QMainWindow):
         central.setLayout(layout)
         self.setCentralWidget(central)
         self._build_menus()
-        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self._build_filters_dock())
+        self.addDockWidget(
+            Qt.DockWidgetArea.LeftDockWidgetArea, self._build_filters_dock()
+        )
         QApplication.instance().aboutToQuit.connect(self._cleanup_temp_files)
 
     @staticmethod
@@ -176,6 +185,7 @@ class UTubeGui(QMainWindow):
     ) -> Worker:
         worker = Worker(fn, *args, progress=progress, context=context, **kwargs)
         if on_finished:
+
             def _handle_finished(payload):
                 if payload is WORKER_FAILED:
                     return
@@ -197,9 +207,13 @@ class UTubeGui(QMainWindow):
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(10)
         library_btn = QPushButton("Library")
-        library_btn.clicked.connect(lambda: self.stack.setCurrentWidget(self.library_view))
+        library_btn.clicked.connect(
+            lambda: self.stack.setCurrentWidget(self.library_view)
+        )
         player_btn = QPushButton("Player")
-        player_btn.clicked.connect(lambda: self.stack.setCurrentWidget(self.player_view))
+        player_btn.clicked.connect(
+            lambda: self.stack.setCurrentWidget(self.player_view)
+        )
         layout.addWidget(library_btn)
         layout.addWidget(player_btn)
         layout.addStretch()
@@ -215,7 +229,9 @@ class UTubeGui(QMainWindow):
 
     def _build_filters_dock(self) -> QDockWidget:
         dock = QDockWidget("Filters", self)
-        dock.setAllowedAreas(Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea)
+        dock.setAllowedAreas(
+            Qt.DockWidgetArea.LeftDockWidgetArea | Qt.DockWidgetArea.RightDockWidgetArea
+        )
         dock.setWidget(self._build_search_card())
         return dock
 
@@ -261,7 +277,11 @@ class UTubeGui(QMainWindow):
         top_grid.addWidget(QLabel("Video quality"), 3, 0)
         self.video_quality_combo = QComboBox()
         self.video_quality_combo.addItems(["Any", "high", "medium", "low"])
-        default_quality = self.defaults.video_quality if self.defaults.video_quality in ["high", "medium", "low"] else "Any"
+        default_quality = (
+            self.defaults.video_quality
+            if self.defaults.video_quality in ["high", "medium", "low"]
+            else "Any"
+        )
         self.video_quality_combo.setCurrentText(default_quality)
         top_grid.addWidget(self.video_quality_combo, 3, 1)
         top_grid.addWidget(QLabel("JS runtime"), 3, 2)
@@ -270,15 +290,23 @@ class UTubeGui(QMainWindow):
         top_grid.addWidget(self.js_runtime_input, 3, 3)
         top_grid.addWidget(QLabel("Remote components"), 4, 0)
         self.remote_components_input = QLineEdit(
-            ", ".join(self.defaults.remote_components) if self.defaults.remote_components else ""
+            ", ".join(self.defaults.remote_components)
+            if self.defaults.remote_components
+            else ""
         )
         self.remote_components_input.setPlaceholderText("ejs:github")
         top_grid.addWidget(self.remote_components_input, 4, 1, 1, 3)
         top_grid.addWidget(QLabel("Quality profile"), 5, 0)
         self.quality_profile_combo = QComboBox()
         for profile in QUALITY_PROFILE_MAP:
-            self.quality_profile_combo.addItem(profile.replace("_", " ").title(), profile)
-        default_profile = self.defaults.quality_profile if self.defaults.quality_profile in QUALITY_PROFILE_MAP else DEFAULT_PROFILE_NAME
+            self.quality_profile_combo.addItem(
+                profile.replace("_", " ").title(), profile
+            )
+        default_profile = (
+            self.defaults.quality_profile
+            if self.defaults.quality_profile in QUALITY_PROFILE_MAP
+            else DEFAULT_PROFILE_NAME
+        )
         idx = self.quality_profile_combo.findData(default_profile)
         if idx >= 0:
             self.quality_profile_combo.setCurrentIndex(idx)
@@ -298,7 +326,9 @@ class UTubeGui(QMainWindow):
         voice_layout.addStretch()
         top_grid.addLayout(voice_layout, 6, 0, 1, 4)
         self._populate_voice_model_combo()
-        self.voice_model_combo.currentIndexChanged.connect(lambda *_: self._on_voice_model_selected())
+        self.voice_model_combo.currentIndexChanged.connect(
+            lambda *_: self._on_voice_model_selected()
+        )
         self._reset_voice_controller(self._current_voice_model_path())
 
         layout.addLayout(top_grid)
@@ -313,7 +343,9 @@ class UTubeGui(QMainWindow):
         self.max_entries_slider.setTickInterval(100)
         self.max_entries_slider.setToolTip(str(self.max_entries_slider.value()))
         filter_grid.addWidget(self.max_entries_slider, 0, 1, 1, 3)
-        self.max_entries_slider.valueChanged.connect(self._on_max_entries_slider_changed)
+        self.max_entries_slider.valueChanged.connect(
+            self._on_max_entries_slider_changed
+        )
         filter_grid.addWidget(QLabel("Format filter"), 1, 2, 1, 2)
         self.format_tab = QTabWidget()
         for label in ("Any", "MP3", "MP4"):
@@ -429,7 +461,14 @@ class UTubeGui(QMainWindow):
         for name, path in entries:
             self.voice_model_combo.addItem(name, str(path))
         if entries:
-            default_index = next((index for index, (name, _) in enumerate(entries) if name == default_name), 0)
+            default_index = next(
+                (
+                    index
+                    for index, (name, _) in enumerate(entries)
+                    if name == default_name
+                ),
+                0,
+            )
             self.voice_model_combo.setCurrentIndex(default_index)
 
     def _current_voice_model_path(self) -> Path:
@@ -491,8 +530,14 @@ class UTubeGui(QMainWindow):
         self._set_voice_listening(True)
         self._spawn_worker(
             self.voice_controller.listen_once,
-            on_finished=lambda payload: (self._on_voice_result(payload), self._set_voice_listening(False)),
-            on_error=lambda message: (self._on_voice_error(message), self._set_voice_listening(False)),
+            on_finished=lambda payload: (
+                self._on_voice_result(payload),
+                self._set_voice_listening(False),
+            ),
+            on_error=lambda message: (
+                self._on_voice_error(message),
+                self._set_voice_listening(False),
+            ),
             context="voice_listen",
         )
 
@@ -619,7 +664,9 @@ class UTubeGui(QMainWindow):
             return True
         if shutil.which(runtime):
             return True
-        self._set_status(f"JS runtime '{runtime}' not found. Update JS runtime in filters.")
+        self._set_status(
+            f"JS runtime '{runtime}' not found. Update JS runtime in filters."
+        )
         return False
 
     def _check_network(self) -> bool:
@@ -629,17 +676,26 @@ class UTubeGui(QMainWindow):
         except OSError:
             return False
 
-    def _preflight_playback(self, prefer_video: bool, preferred_format: Optional[str]) -> bool:
+    def _preflight_playback(
+        self, prefer_video: bool, preferred_format: Optional[str]
+    ) -> bool:
         if not self._check_js_runtime():
             return False
         if not self._check_network():
             self._set_status("Network appears offline; playback may fail.")
-        if prefer_video and sys.platform == "win32" and preferred_format not in (None, "mp4"):
+        if (
+            prefer_video
+            and sys.platform == "win32"
+            and preferred_format not in (None, "mp4")
+        ):
             self._set_status("Windows playback is most reliable with MP4 streams.")
         return True
 
     def _is_default_stream_format(self, stream_format: str) -> bool:
-        return not stream_format.strip() or stream_format.strip() == self.defaults.stream_format
+        return (
+            not stream_format.strip()
+            or stream_format.strip() == self.defaults.stream_format
+        )
 
     def _build_stream_selector(
         self,
@@ -651,7 +707,9 @@ class UTubeGui(QMainWindow):
         if stream_format and not self._is_default_stream_format(stream_format):
             return stream_format
         if prefer_video:
-            if preferred_format == "mp4" or (preferred_format is None and sys.platform == "win32"):
+            if preferred_format == "mp4" or (
+                preferred_format is None and sys.platform == "win32"
+            ):
                 return "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best"
             return "bestvideo+bestaudio/best"
         if preferred_format == "mp3":
@@ -758,7 +816,9 @@ class UTubeGui(QMainWindow):
                     addr.is_reserved,
                 ]
             ):
-                raise RuntimeError("Stream URL resolves to a disallowed network address.")
+                raise RuntimeError(
+                    "Stream URL resolves to a disallowed network address."
+                )
 
     def _toggle_now_playback(self) -> None:
         self.sound_manager.play_click()
@@ -788,7 +848,9 @@ class UTubeGui(QMainWindow):
             title = track.title or track.video_id
             action = menu.addAction(title)
             action.triggered.connect(lambda _, t=track: self._handle_song_activation(t))
-        menu.exec(self.history_button.mapToGlobal(self.history_button.rect().bottomLeft()))
+        menu.exec(
+            self.history_button.mapToGlobal(self.history_button.rect().bottomLeft())
+        )
 
     def _enqueue_track(self, track: TrackMetadata, next_up: bool = False) -> None:
         if next_up:
@@ -814,12 +876,28 @@ class UTubeGui(QMainWindow):
         self.player_controller.set_position(target)
 
     def _wire_shortcuts(self) -> None:
-        QShortcut(QKeySequence("Space"), self, activated=self.player_controller.toggle_playback)
-        QShortcut(QKeySequence("J"), self, activated=lambda: self._seek_relative(-10_000))
-        QShortcut(QKeySequence("L"), self, activated=lambda: self._seek_relative(10_000))
-        QShortcut(QKeySequence("Ctrl+F"), self, activated=self.library_view.search_input.setFocus)
-        QShortcut(QKeySequence("Return"), self, activated=self._play_selected_from_library)
-        QShortcut(QKeySequence("Enter"), self, activated=self._play_selected_from_library)
+        QShortcut(
+            QKeySequence("Space"),
+            self,
+            activated=self.player_controller.toggle_playback,
+        )
+        QShortcut(
+            QKeySequence("J"), self, activated=lambda: self._seek_relative(-10_000)
+        )
+        QShortcut(
+            QKeySequence("L"), self, activated=lambda: self._seek_relative(10_000)
+        )
+        QShortcut(
+            QKeySequence("Ctrl+F"),
+            self,
+            activated=self.library_view.search_input.setFocus,
+        )
+        QShortcut(
+            QKeySequence("Return"), self, activated=self._play_selected_from_library
+        )
+        QShortcut(
+            QKeySequence("Enter"), self, activated=self._play_selected_from_library
+        )
 
     def _show_shortcuts_dialog(self) -> None:
         shortcuts = "\n".join(
@@ -845,7 +923,9 @@ class UTubeGui(QMainWindow):
             self._current_js_runtime(),
             self._current_remote_components(),
             self._current_quality_profile(),
-            on_finished=lambda files: self._set_status(f"Downloaded {len(files)} files."),
+            on_finished=lambda files: self._set_status(
+                f"Downloaded {len(files)} files."
+            ),
             context="download_tracks",
         )
 
@@ -884,6 +964,7 @@ class UTubeGui(QMainWindow):
         else:
             self.favorite_button.setChecked(False)
             self.favorite_button.setText("♡")
+
     def _handle_song_activation(self, track: TrackMetadata) -> None:
         prefer_video = self.library_view.is_video(track)
         preferred_format = self._preferred_format()
@@ -904,7 +985,9 @@ class UTubeGui(QMainWindow):
 
     def _route_media_playback(self, track: TrackMetadata, link: StreamingLink) -> None:
         self._cleanup_temp_files()
-        self.player_controller.play_track(track, link.stream_url, self._should_prefer_video(track))
+        self.player_controller.play_track(
+            track, link.stream_url, self._should_prefer_video(track)
+        )
         self._update_now_playing_label(track)
         self._play_attempts.pop(track.video_id, None)
         self._last_streams[track.video_id] = link.stream_url
@@ -921,7 +1004,9 @@ class UTubeGui(QMainWindow):
             self._set_status("Retrying stream after transient error...")
             self._retry_stream(track)
         elif attempts == 2:
-            self._set_status("Caching stream locally because live playback keeps failing.")
+            self._set_status(
+                "Caching stream locally because live playback keeps failing."
+            )
             self._start_local_fallback(track)
         else:
             self._set_status("Playback failed multiple times; track has been paused.")
@@ -937,7 +1022,9 @@ class UTubeGui(QMainWindow):
             if not last_stream:
                 return
             self._set_status("Looping current track...")
-            self.player_controller.play_track(track, last_stream, self.library_view.is_video(track))
+            self.player_controller.play_track(
+                track, last_stream, self.library_view.is_video(track)
+            )
             return
         if self._queue:
             next_track = self._queue.pop(0)
@@ -968,7 +1055,9 @@ class UTubeGui(QMainWindow):
             self.stream_format_input.text().strip(),
             self._preferred_format(),
             context="download_fallback",
-            on_finished=lambda path, t=track, pv=prefer_video: self._play_local_media(t, path, pv),
+            on_finished=lambda path, t=track, pv=prefer_video: self._play_local_media(
+                t, path, pv
+            ),
         )
 
     def _download_stream_to_temp(
@@ -1006,7 +1095,10 @@ class UTubeGui(QMainWindow):
         temp_file.close()
         headers = {"User-Agent": "Mozilla/5.0"}
         request = urllib.request.Request(stream_url, headers=headers)
-        with urllib.request.urlopen(request, timeout=60) as response, open(temp_file_path, "wb") as out:
+        with (
+            urllib.request.urlopen(request, timeout=60) as response,
+            open(temp_file_path, "wb") as out,
+        ):
             content_length = response.getheader("Content-Length")
             if content_length:
                 try:
@@ -1025,7 +1117,9 @@ class UTubeGui(QMainWindow):
                     raise RuntimeError("Stream exceeded the fallback cache size limit.")
         return temp_file_path
 
-    def _play_local_media(self, track: TrackMetadata, path: str, prefer_video: bool) -> None:
+    def _play_local_media(
+        self, track: TrackMetadata, path: str, prefer_video: bool
+    ) -> None:
         self._cleanup_temp_files(preserve=path)
         self._temp_media_files.add(path)
         self._cap_temp_cache()
@@ -1061,8 +1155,12 @@ class UTubeGui(QMainWindow):
             overflow -= 1
 
     def _resolve_stream_url(
-        self, track: TrackMetadata, stream_format: str, prefer_video: bool, video_quality: str,
-        preferred_format: Optional[str]
+        self,
+        track: TrackMetadata,
+        stream_format: str,
+        prefer_video: bool,
+        video_quality: str,
+        preferred_format: Optional[str],
     ) -> StreamingLink:
         effective_preferred = preferred_format
         if prefer_video and effective_preferred is None and sys.platform == "win32":
@@ -1106,7 +1204,11 @@ class UTubeGui(QMainWindow):
     def _current_remote_components(self) -> List[str]:
         text = self.remote_components_input.text().strip()
         if text:
-            return [item.strip() for item in text.replace(";", ",").split(",") if item.strip()]
+            return [
+                item.strip()
+                for item in text.replace(";", ",").split(",")
+                if item.strip()
+            ]
         return self.defaults.remote_components
 
     def _current_quality_profile(self) -> str:
@@ -1143,7 +1245,10 @@ class UTubeGui(QMainWindow):
             max_results=self.max_entries_slider.value(),
             progress=True,
             on_progress=self._on_track_discovered,
-            on_finished=lambda tracks: (self._on_search_finished(tracks), self.search_button.setEnabled(True)),
+            on_finished=lambda tracks: (
+                self._on_search_finished(tracks),
+                self.search_button.setEnabled(True),
+            ),
             context="search",
         )
         self.stack.setCurrentWidget(self.library_view)
@@ -1160,11 +1265,15 @@ class UTubeGui(QMainWindow):
                 f"Streaming {progress.index} of {progress.total_estimate} tracks"
             )
         else:
-            self.last_search_summary_label.setText(f"Streaming {len(self.tracks)} tracks")
+            self.last_search_summary_label.setText(
+                f"Streaming {len(self.tracks)} tracks"
+            )
 
     def _on_search_finished(self, tracks: List[TrackMetadata]) -> None:
         self._set_status(f"Found {len(tracks)} tracks.")
-        self.last_search_summary_label.setText(f"Search complete: {len(tracks)} results")
+        self.last_search_summary_label.setText(
+            f"Search complete: {len(tracks)} results"
+        )
         self.search_progress.setVisible(False)
 
     def _on_worker_error(self, error: Union[WorkerError, str]) -> None:
@@ -1184,7 +1293,9 @@ class UTubeGui(QMainWindow):
         max_views = self.max_views_spin.value() or None
         safe_for_work = self.sfw_checkbox.isChecked()
         keywords = self.keywords_input.text().strip() or None
-        if not any([min_duration, max_duration, min_views, max_views, safe_for_work, keywords]):
+        if not any(
+            [min_duration, max_duration, min_views, max_views, safe_for_work, keywords]
+        ):
             return None
         return SearchFilters(
             min_duration=min_duration,
@@ -1211,7 +1322,9 @@ class UTubeGui(QMainWindow):
             self._current_js_runtime(),
             self._current_remote_components(),
             self._current_quality_profile(),
-            on_finished=lambda files: self._set_status(f"Downloaded {len(files)} files."),
+            on_finished=lambda files: self._set_status(
+                f"Downloaded {len(files)} files."
+            ),
             context="download_tracks",
         )
 
@@ -1232,7 +1345,9 @@ class UTubeGui(QMainWindow):
         )
 
     def _select_download_dir(self) -> None:
-        directory = QFileDialog.getExistingDirectory(self, "Download folder", str(self.defaults.download_dir))
+        directory = QFileDialog.getExistingDirectory(
+            self, "Download folder", str(self.defaults.download_dir)
+        )
         if directory:
             self.download_dir_label.setText(directory)
             self._set_status(f"Download folder set to {directory}")
@@ -1262,13 +1377,23 @@ class UTubeGui(QMainWindow):
         self.keywords_input.clear()
         self.order_combo.setCurrentText("relevance")
         self.stream_format_input.setText(self.defaults.stream_format)
-        default_quality = self.defaults.video_quality if self.defaults.video_quality in ["high", "medium", "low"] else "Any"
+        default_quality = (
+            self.defaults.video_quality
+            if self.defaults.video_quality in ["high", "medium", "low"]
+            else "Any"
+        )
         self.video_quality_combo.setCurrentText(default_quality)
         self.js_runtime_input.setText(self.defaults.js_runtime or "")
         self.remote_components_input.setText(
-            ", ".join(self.defaults.remote_components) if self.defaults.remote_components else ""
+            ", ".join(self.defaults.remote_components)
+            if self.defaults.remote_components
+            else ""
         )
-        default_profile = self.defaults.quality_profile if self.defaults.quality_profile in QUALITY_PROFILE_MAP else DEFAULT_PROFILE_NAME
+        default_profile = (
+            self.defaults.quality_profile
+            if self.defaults.quality_profile in QUALITY_PROFILE_MAP
+            else DEFAULT_PROFILE_NAME
+        )
         idx = self.quality_profile_combo.findData(default_profile)
         if idx >= 0:
             self.quality_profile_combo.setCurrentIndex(idx)
@@ -1317,4 +1442,3 @@ def run_gui() -> None:
     window.show()
 
     app.exec()
-

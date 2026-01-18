@@ -38,7 +38,9 @@ def test_download_manager_invokes_yt_dlp(monkeypatch, tmp_path: Path) -> None:
 
     monkeypatch.setattr("utube.storage.yt_dlp.YoutubeDL", DummyYDL)
 
-    manager = DownloadManager(tmp_path, audio_format="ogg", bitrate="128", remote_components=["ejs:github"])
+    manager = DownloadManager(
+        tmp_path, audio_format="ogg", bitrate="128", remote_components=["ejs:github"]
+    )
     files = manager.download_tracks([_track_metadata()])
 
     assert files
@@ -96,14 +98,25 @@ def test_streamer_selects_best_audio(monkeypatch) -> None:
             captured.setdefault("urls", []).append(url)
             return {
                 "formats": [
-                    {"acodec": "opus", "abr": 192, "url": "https://stream/opus", "format_id": "opus-hi"},
-                    {"acodec": "none", "url": "https://stream/none", "format_id": "video"},
+                    {
+                        "acodec": "opus",
+                        "abr": 192,
+                        "url": "https://stream/opus",
+                        "format_id": "opus-hi",
+                    },
+                    {
+                        "acodec": "none",
+                        "url": "https://stream/none",
+                        "format_id": "video",
+                    },
                 ]
             }
 
     monkeypatch.setattr("utube.storage.yt_dlp.YoutubeDL", DummyYDL)
 
-    stream_links = Streamer(format_selector="bestaudio/best", remote_components=["ejs:github"]).stream_links([_track_metadata()])
+    stream_links = Streamer(
+        format_selector="bestaudio/best", remote_components=["ejs:github"]
+    ).stream_links([_track_metadata()])
     assert len(stream_links) == 1
     link = stream_links[0]
     assert isinstance(link, StreamingLink)
@@ -129,9 +142,24 @@ def test_streamer_prefers_video_quality(monkeypatch) -> None:
             captured.setdefault("urls", []).append(url)
             return {
                 "formats": [
-                    {"url": "low-stream", "height": 360, "vcodec": "avc1", "acodec": "aac"},
-                    {"url": "high-stream", "height": 1080, "vcodec": "avc1", "acodec": "aac"},
-                    {"url": "mid-stream", "height": 720, "vcodec": "avc1", "acodec": "aac"},
+                    {
+                        "url": "low-stream",
+                        "height": 360,
+                        "vcodec": "avc1",
+                        "acodec": "aac",
+                    },
+                    {
+                        "url": "high-stream",
+                        "height": 1080,
+                        "vcodec": "avc1",
+                        "acodec": "aac",
+                    },
+                    {
+                        "url": "mid-stream",
+                        "height": 720,
+                        "vcodec": "avc1",
+                        "acodec": "aac",
+                    },
                 ]
             }
 

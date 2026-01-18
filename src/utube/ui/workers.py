@@ -26,7 +26,9 @@ class WorkerSignals(QObject):
 
 
 class Worker(QRunnable):
-    def __init__(self, fn, *args, progress=False, context: Optional[str] = None, **kwargs):
+    def __init__(
+        self, fn, *args, progress=False, context: Optional[str] = None, **kwargs
+    ):
         super().__init__()
         self.fn = fn
         self.args = args

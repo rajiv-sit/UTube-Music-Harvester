@@ -130,7 +130,8 @@ class VoiceParser:
                 return VoiceCommand(command_type=VoiceCommandType.SEARCH, query=query)
 
         number_match = re.match(
-            r"play(?:\s+the)?\s+(?:track|song)?\s*(?:number\s*)?(\d+|[a-z-]+)", normalized
+            r"play(?:\s+the)?\s+(?:track|song)?\s*(?:number\s*)?(\d+|[a-z-]+)",
+            normalized,
         )
         if number_match:
             raw = number_match.group(1)
@@ -142,7 +143,9 @@ class VoiceParser:
                 index = number - 1
                 if index < 0:
                     raise ValueError("invalid track number")
-                return VoiceCommand(command_type=VoiceCommandType.PLAY_SPECIFIC, index=index)
+                return VoiceCommand(
+                    command_type=VoiceCommandType.PLAY_SPECIFIC, index=index
+                )
 
         for prefix in self._title_prefixes:
             if normalized.startswith(prefix):
@@ -154,7 +157,8 @@ class VoiceParser:
 
         if normalized in self._control_map:
             return VoiceCommand(
-                command_type=VoiceCommandType.CONTROL, action=self._control_map[normalized]
+                command_type=VoiceCommandType.CONTROL,
+                action=self._control_map[normalized],
             )
 
         raise ValueError(f"unrecognized voice command: {phrase}")
@@ -171,7 +175,9 @@ class VoiceParser:
 
 
 class SpeechEngine:
-    def recognize_once(self, *, language: str, timeout: float, phrase_time_limit: float) -> str:
+    def recognize_once(
+        self, *, language: str, timeout: float, phrase_time_limit: float
+    ) -> str:
         raise NotImplementedError
 
 
@@ -182,7 +188,9 @@ class OfflineSpeechEngine(SpeechEngine):
         self._recognizer = sr.Recognizer()
         self._sample_rate = sample_rate
 
-    def recognize_once(self, *, language: str, timeout: float, phrase_time_limit: float) -> str:
+    def recognize_once(
+        self, *, language: str, timeout: float, phrase_time_limit: float
+    ) -> str:
         with sr.Microphone(sample_rate=self._sample_rate) as source:
             self._recognizer.adjust_for_ambient_noise(source, duration=0.5)
             audio = self._recognizer.listen(
@@ -207,7 +215,9 @@ class VoskSpeechEngine(SpeechEngine):
         self._resolved_device: Optional[int] = None
         self._resolved_sample_rate: Optional[int] = None
 
-    def recognize_once(self, *, language: str, timeout: float, phrase_time_limit: float) -> str:
+    def recognize_once(
+        self, *, language: str, timeout: float, phrase_time_limit: float
+    ) -> str:
         device, samplerate = self._resolve_audio_device()
         duration = max(0.1, phrase_time_limit)
         frames = int(samplerate * duration)
@@ -285,7 +295,9 @@ class VoiceController:
             return OfflineSpeechEngine()
         if name == "vosk_offline":
             if not model_path:
-                raise RuntimeError("UTUBE_VOICE_MODEL_PATH is required for the Vosk engine")
+                raise RuntimeError(
+                    "UTUBE_VOICE_MODEL_PATH is required for the Vosk engine"
+                )
             return VoskSpeechEngine(model_path=model_path)
         raise ValueError(f"unsupported voice engine: {name}")
 

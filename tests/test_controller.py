@@ -1,6 +1,13 @@
 from pathlib import Path
 
-from utube import DownloadResult, MediaRequest, StreamResult, StreamingLink, TrackMetadata, fulfill_request
+from utube import (
+    DownloadResult,
+    MediaRequest,
+    StreamResult,
+    StreamingLink,
+    TrackMetadata,
+    fulfill_request,
+)
 
 
 def _stub_track() -> TrackMetadata:
@@ -24,7 +31,9 @@ def test_fulfill_request_download_path(monkeypatch, tmp_path: Path) -> None:
     request = MediaRequest(genre="trance", mode="download", download_dir=tmp_path)
     track_list = [_stub_track()]
 
-    monkeypatch.setattr("utube.controller.search_tracks", lambda *args, **kwargs: track_list)
+    monkeypatch.setattr(
+        "utube.controller.search_tracks", lambda *args, **kwargs: track_list
+    )
 
     class DummyDownloader:
         def __init__(self, *args, **kwargs) -> None:
@@ -34,7 +43,9 @@ def test_fulfill_request_download_path(monkeypatch, tmp_path: Path) -> None:
             self.requested.append(list(tracks))
             return [tmp_path / "fake.mp3"]
 
-    monkeypatch.setattr("utube.controller.DownloadManager", lambda *args, **kwargs: DummyDownloader())
+    monkeypatch.setattr(
+        "utube.controller.DownloadManager", lambda *args, **kwargs: DummyDownloader()
+    )
 
     result = fulfill_request(request)
     assert isinstance(result, DownloadResult)
@@ -46,7 +57,9 @@ def test_fulfill_request_stream_path(monkeypatch) -> None:
     request = MediaRequest(genre="ambient", mode="stream")
     track_list = [_stub_track()]
 
-    monkeypatch.setattr("utube.controller.search_tracks", lambda *args, **kwargs: track_list)
+    monkeypatch.setattr(
+        "utube.controller.search_tracks", lambda *args, **kwargs: track_list
+    )
 
     class DummyStreamer:
         def __init__(self, *args, **kwargs) -> None:
@@ -56,7 +69,9 @@ def test_fulfill_request_stream_path(monkeypatch) -> None:
             self.requested.append(list(tracks))
             return [StreamingLink(track=tracks[0], stream_url="link", format_id="best")]
 
-    monkeypatch.setattr("utube.controller.Streamer", lambda *args, **kwargs: DummyStreamer())
+    monkeypatch.setattr(
+        "utube.controller.Streamer", lambda *args, **kwargs: DummyStreamer()
+    )
 
     result = fulfill_request(request)
     assert isinstance(result, StreamResult)

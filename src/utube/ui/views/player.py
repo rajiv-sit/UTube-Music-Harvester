@@ -172,7 +172,7 @@ class SoundManager(QObject):
         self.effects[name] = effect
 
     def play_click(self) -> None:
-        if (effect := self.effects.get("click")):
+        if effect := self.effects.get("click"):
             effect.play()
 
 
@@ -194,16 +194,26 @@ class PlayerController(QObject):
         self._current_track: Optional[TrackMetadata] = None
         self._is_video = False
         self.player.playbackStateChanged.connect(self.stateChanged)
-        self.player.positionChanged.connect(lambda pos: self.positionChanged.emit(int(pos)))
-        self.player.durationChanged.connect(lambda duration: self.durationChanged.emit(int(duration)))
+        self.player.positionChanged.connect(
+            lambda pos: self.positionChanged.emit(int(pos))
+        )
+        self.player.durationChanged.connect(
+            lambda duration: self.durationChanged.emit(int(duration))
+        )
         self.player.errorOccurred.connect(self._on_media_error)
         self.player.mediaStatusChanged.connect(self.mediaStatusChanged)
 
-    def play_track(self, track: TrackMetadata, stream_url: str, prefer_video: bool) -> None:
+    def play_track(
+        self, track: TrackMetadata, stream_url: str, prefer_video: bool
+    ) -> None:
         self._current_track = track
         self._is_video = prefer_video
         self.video_widget.setVisible(prefer_video)
-        source_url = QUrl.fromLocalFile(stream_url) if Path(stream_url).exists() else QUrl(stream_url)
+        source_url = (
+            QUrl.fromLocalFile(stream_url)
+            if Path(stream_url).exists()
+            else QUrl(stream_url)
+        )
         self.player.setSource(source_url)
         self.player.play()
         self.trackChanged.emit(track)
@@ -235,7 +245,12 @@ class PlayerController(QObject):
 
 
 class PlayerView(QWidget):
-    def __init__(self, controller: PlayerController, sounds: SoundManager, parent: Optional[QWidget] = None) -> None:
+    def __init__(
+        self,
+        controller: PlayerController,
+        sounds: SoundManager,
+        parent: Optional[QWidget] = None,
+    ) -> None:
         super().__init__(parent)
         self.controller = controller
         self.sounds = sounds
@@ -256,11 +271,15 @@ class PlayerView(QWidget):
         meta_layout.addWidget(self.info_label)
 
         self.play_button = QToolButton()
-        self.play_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
+        self.play_button.setIcon(
+            self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
+        )
         self.play_button.setToolTip("Play")
         self.play_button.clicked.connect(self._toggle_play)
         self.stop_button = QToolButton()
-        self.stop_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaStop))
+        self.stop_button.setIcon(
+            self.style().standardIcon(QStyle.StandardPixmap.SP_MediaStop)
+        )
         self.stop_button.setToolTip("Stop")
         self.stop_button.clicked.connect(self._stop)
         control_style = (
@@ -306,7 +325,9 @@ class PlayerView(QWidget):
         self._visualizer_timer.timeout.connect(self.visualizer.refresh)
 
         self.video_stack = QStackedWidget()
-        self.video_stack.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.video_stack.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
         self.video_stack.setMinimumHeight(220)
         self.video_stack.addWidget(self.controller.video_widget)
         self.video_stack.addWidget(self.visualizer)
@@ -346,7 +367,10 @@ class PlayerView(QWidget):
             if self._visualizer_timer.isActive():
                 self._visualizer_timer.stop()
         else:
-            if self.controller.player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
+            if (
+                self.controller.player.playbackState()
+                == QMediaPlayer.PlaybackState.PlayingState
+            ):
                 if not self._visualizer_timer.isActive():
                     self._visualizer_timer.start()
 
@@ -373,7 +397,9 @@ class PlayerView(QWidget):
     def _on_position_changed(self, position: int) -> None:
         if abs(position - self._last_waveform_update_ms) >= 200:
             if self._duration_ms > 0:
-                self.waveform.set_progress(min(position / max(1, self._duration_ms), 1.0))
+                self.waveform.set_progress(
+                    min(position / max(1, self._duration_ms), 1.0)
+                )
             self._last_waveform_update_ms = position
         self.seek_slider.blockSignals(True)
         self.seek_slider.setValue(position)
@@ -389,7 +415,9 @@ class PlayerView(QWidget):
 
     def _on_state_changed(self, state: QMediaPlayer.PlaybackState) -> None:
         if state == QMediaPlayer.PlaybackState.PlayingState:
-            self.play_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPause))
+            self.play_button.setIcon(
+                self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPause)
+            )
             self.play_button.setToolTip("Pause")
             suffix = f" ({self._stream_details})" if self._stream_details else ""
             self.info_label.setText(f"Playing{suffix}")
@@ -397,13 +425,17 @@ class PlayerView(QWidget):
                 if not self._visualizer_timer.isActive():
                     self._visualizer_timer.start()
         elif state == QMediaPlayer.PlaybackState.PausedState:
-            self.play_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
+            self.play_button.setIcon(
+                self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
+            )
             self.play_button.setToolTip("Play")
             self.info_label.setText("Paused")
             if self._visualizer_timer.isActive():
                 self._visualizer_timer.stop()
         else:
-            self.play_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
+            self.play_button.setIcon(
+                self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
+            )
             self.play_button.setToolTip("Play")
             self.info_label.setText("Stopped")
             if self._visualizer_timer.isActive():

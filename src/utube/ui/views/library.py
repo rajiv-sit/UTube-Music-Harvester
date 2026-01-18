@@ -46,7 +46,9 @@ class LibraryView(QWidget):
         controls.addWidget(self.search_input)
         self.type_combo = QComboBox()
         self.type_combo.addItems(["All", "Audio", "Video"])
-        self.type_combo.currentTextChanged.connect(lambda value: self.proxy.set_type_filter(value))
+        self.type_combo.currentTextChanged.connect(
+            lambda value: self.proxy.set_type_filter(value)
+        )
         controls.addWidget(self.type_combo)
         self.count_label = QLabel("0 tracks")
         controls.addWidget(self.count_label)

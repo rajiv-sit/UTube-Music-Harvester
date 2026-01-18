@@ -78,7 +78,9 @@ class DownloadManager:
         for track in tracks:
             if not track.webpage_url:
                 continue
-            target = self.base_dir / build_track_filename(track, suffix=f".{self.audio_format}")
+            target = self.base_dir / build_track_filename(
+                track, suffix=f".{self.audio_format}"
+            )
             target.parent.mkdir(parents=True, exist_ok=True)
             self._download(track.webpage_url, target)
             saved.append(target)
@@ -87,7 +89,9 @@ class DownloadManager:
     def _download(self, url: str, target: Path) -> None:
         """Invoke `yt-dlp` to download and transcode a single track."""
         output_template = str(target.with_suffix(".%(ext)s"))
-        format_selector = self._video_audio_selector if self.is_video_output else self._audio_selector
+        format_selector = (
+            self._video_audio_selector if self.is_video_output else self._audio_selector
+        )
         ydl_opts = {
             "format": format_selector,
             "outtmpl": output_template,
@@ -140,7 +144,9 @@ class Streamer:
         selector = format_selector
         if not selector:
             selector = (
-                build_video_audio_selector(self.profile) if prefer_video else build_audio_selector(self.profile)
+                build_video_audio_selector(self.profile)
+                if prefer_video
+                else build_audio_selector(self.profile)
             )
         self.format_selector = selector
         self.js_runtime = js_runtime
@@ -179,7 +185,9 @@ class Streamer:
         return links
 
     def _select_format(self, info: dict) -> Optional[dict]:
-        formats = [candidate for candidate in info.get("formats", []) if candidate.get("url")]
+        formats = [
+            candidate for candidate in info.get("formats", []) if candidate.get("url")
+        ]
         if not formats:
             return None
 
@@ -215,7 +223,8 @@ class Streamer:
         video_candidates = [
             candidate
             for candidate in formats
-            if candidate.get("vcodec") not in (None, "none") and candidate.get("acodec") not in (None, "none")
+            if candidate.get("vcodec") not in (None, "none")
+            and candidate.get("acodec") not in (None, "none")
         ]
         if not video_candidates:
             return None
@@ -253,7 +262,9 @@ class Streamer:
                 return requirement.min_height
         return None
 
-    def _apply_quality_cap(self, candidates: List[dict], cap: Optional[int]) -> List[dict]:
+    def _apply_quality_cap(
+        self, candidates: List[dict], cap: Optional[int]
+    ) -> List[dict]:
         if not cap:
             return candidates
         filtered: List[dict] = []
@@ -273,7 +284,9 @@ class Streamer:
 
     def _select_audio_candidate(self, formats: List[dict]) -> Optional[dict]:
         audio_candidates = [
-            candidate for candidate in formats if candidate.get("acodec") not in (None, "none")
+            candidate
+            for candidate in formats
+            if candidate.get("acodec") not in (None, "none")
         ]
         if not audio_candidates:
             return None
@@ -300,7 +313,9 @@ class Streamer:
                     return candidate
         return candidates[0]
 
-    def _meets_video_requirement(self, candidate: dict, requirement: "VideoRequirement") -> bool:
+    def _meets_video_requirement(
+        self, candidate: dict, requirement: "VideoRequirement"
+    ) -> bool:
         height = candidate.get("height") or 0
         if height < requirement.min_height:
             return False
@@ -325,6 +340,7 @@ class Streamer:
         height = candidate.get("height") or 0
         tbr = candidate.get("tbr") or 0.0
         return height, float(tbr)
+
 
 def _js_runtime_entry(runtime: str) -> dict:
     name = os.path.splitext(os.path.basename(runtime))[0]
