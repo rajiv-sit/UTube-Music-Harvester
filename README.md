@@ -145,6 +145,11 @@ umpy are missing.
 - **FFmpeg reports "Late SEI is not implemented"**: install the latest Git build from https://ffmpeg.org/download.html#build-windows; that warning means the stock release lacks that codec feature. Restart the CLI/GUI after updating so the new `ffmpeg` binary on your PATH is used.
 - **Need a nightly Git build?** Use the releases at https://github.com/BtbN/FFmpeg-Builds/releases (grab the `ffmpeg-master-latest-win64-gpl-shared.zip`/`-full` archive). Extract it and ensure the included `bin\ffmpeg.exe` is on your PATH or referenced via `UTUBE_FFMPEG_PATH`.
 
+## Production readiness
+
+- See [PRODUCTION.md](PRODUCTION.md) for the release checklist, CI/CD expectations, and compliance reminders before deploying this project outside of experimentation.
+- Add release tags, automated CI runs, and documentation for any environment where the CLI/GUI/voice stack needs to run unattended before calling it production-grade.
+
 ## Architecture & References
 
 - Architecture details: ARCHITECTURE.md.
