@@ -148,6 +148,7 @@ umpy are missing.
 ## Production readiness
 
 - See [PRODUCTION.md](PRODUCTION.md) for the release checklist, CI/CD expectations, and compliance reminders before deploying this project outside of experimentation.
+- Review the release timeline in [RELEASES.md](RELEASES.md); release notes and tags anchor future stable artifacts.
 - Add release tags, automated CI runs, and documentation for any environment where the CLI/GUI/voice stack needs to run unattended before calling it production-grade.
 
 ## Architecture & References

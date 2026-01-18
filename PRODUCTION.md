@@ -6,16 +6,17 @@ This project currently powers a CLI, GUI, and optional voice layer over yt-dlp/F
 
 | Item | Status | Notes |
 | --- | --- | --- |
-| Semantic versioned releases | ❌ | Tag a new `vX.Y.Z` when the feature set stabilises and publish wheel/sdist artifacts on PyPI or GitHub Packages. |
-| Release notes | ✅/❌ | Summarise user-facing changes, dependency bumps, and migration steps alongside each release. |
+| Semantic versioned releases | ✅ | `v0.1.0` is tagged and documented in `RELEASES.md`; use future tags for every production push. |
+| Release notes | ✅ | `RELEASES.md` records user-facing changes; append a row for each semantic release. |
 | Binary dependencies documented | ✅ | `README` lists ffmpeg/yt-dlp prerequisites; keep that section up to date when runtimes shift. |
 | Upgrade policy | ❌ | Document how breaking API/CLI changes get versioned and communicated. |
 
 ## CI/CD & quality gates
 
-- `python -m pip install -e .` (editable install) to ensure PYPROJECT dependencies build correctly.
-- `python -m pytest` across supported Python versions (currently 3.11–3.14) as shown in `.github/workflows/ci.yml`.
-- Consider adding coverage linting, formatter checks, and security scans to this pipeline before enabling branch protections.
+- `python -m pip install -e .[dev]` so dev/test tooling (pytest, black, coverage, pip-audit) installs consistently.
+- `python -m black --check src tests` to keep formatting locked before and after merges.
+- `python -m coverage run -m pytest` and `python -m coverage report` to surface regression coverage for every agent.
+- `python -m pip_audit` to catch risky dependencies; keep the workflow in `.github/workflows/ci.yml` up to date.
 - Enforce merge gates so PRs must pass CI before hitting `main`.
 
 ## Documentation & operational docs
