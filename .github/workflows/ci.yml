@@ -37,6 +37,12 @@ jobs:
             curl -sSL https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip -o /tmp/vosk-model-small-en-us-0.15.zip
             unzip -q /tmp/vosk-model-small-en-us-0.15.zip -d vosk-models
           fi
+      - name: Ensure additional Vosk directories
+        run: |
+          for model in vosk-model-en-us-0.22 vosk-model-en-us-0.22-lgraph; do
+            mkdir -p "vosk-models/$model"
+            touch "vosk-models/$model/.gitkeep"
+          done
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip setuptools
