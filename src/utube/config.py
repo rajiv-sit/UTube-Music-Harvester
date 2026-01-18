@@ -14,6 +14,28 @@ from .quality import DEFAULT_PROFILE_NAME
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 
+PROXY_ENV_VARS = (
+    "ALL_PROXY",
+    "all_proxy",
+    "FTP_PROXY",
+    "ftp_proxy",
+    "HTTP_PROXY",
+    "http_proxy",
+    "HTTPS_PROXY",
+    "https_proxy",
+    "NO_PROXY",
+    "no_proxy",
+)
+
+
+def _clear_proxy_env_vars() -> None:
+    # Make sure yt-dlp/requests never pick up a stale proxy that cannot be reached.
+    for var in PROXY_ENV_VARS:
+        os.environ.pop(var, None)
+
+
+_clear_proxy_env_vars()
+
 
 def _guess_user_root() -> Path:
     cwd = Path.cwd().resolve()

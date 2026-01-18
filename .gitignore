@@ -6,3 +6,9 @@ ffmpeg-master-latest-win64-gpl-shared/
 __pycache__/
 src/utube/__pycache__/
 tests/__pycache__/
+.pytest_cache
+.venv
+downloads
+.env
+.env.example
+ARCHITECTURE.md
