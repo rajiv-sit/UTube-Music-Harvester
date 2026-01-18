@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "utube-music-harvester"
+version = "0.1.0"
+description = "Genre-aware YouTube music extraction and filtering pipeline."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "yt-dlp>=2024.01.01",
+    "pydub>=0.25.1",
+    "aiohttp>=3.8.7",
+    "mutagen>=1.43.0,<1.48",
+    "python-dotenv>=1.0.0",
+    "PyQt6>=6.6.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=24.0.0",
+    "coverage>=7.1",
+    "mypy>=1.8",
+    "pip-audit>=2.0",
+    "pytest>=7.0",
+    "pytest-cov>=4.1",
+]
+voice = [
+    "vosk>=0.3.45",
+    "sounddevice>=0.5.3",
+    "numpy>=1.26.0",
+    "SpeechRecognition>=3.14.5",
+]
+
+[project.scripts]
+utube = "utube.cli:cli_main"
+utube-gui = "utube.gui:run_gui"
+
+[tool.setuptools.packages.find]
+where = ["src"]
